@@ -4,17 +4,27 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="author" content="Frank">
+    <script src="https://code.jquery.com/jquery-3.7.1.slim.js"
+        integrity="sha256-UgvvN8vBkgO0luPSUl2s8TIlOSYRoGFAX4jlCIm9Adc=" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-    <div id="richText">
+    <div class="navigator-bar">
+    </div>
+    <div id="richText" class="richTextEditor">
 
-        <div id='mainEditor' contenteditable="true">
-
+        <div id='mainEditor' class="textEditorFrame" contenteditable="true">
+            <div class="separator">
+                <div class="articleFrame">
+                    <!--p name="initialHeader" class="articleHead">hi</p-->
+                    <h3 name="initialParagraph" class="articleHeader"><br></h3>
+                    <p name="initialParagraph" class="articleParagraph"><br></p>
+                </div>
+            </div>
         </div>
-        <p id="initialTitle">&nbsp;&nbsp;&nbsp;&nbsp;start typing...</p>
-        <input id="postArticle" type="button" value="POST ARTICLE"></input>
+        <!--span id="initialTitle">&nbsp;&nbsp;&nbsp;&nbsp;start typing...</span-->
+        <!--input id="postArticle" type="button" value="POST ARTICLE"></input-->
 
     </div>
 
@@ -22,3 +32,15 @@
 <script src="client.js"></script>
 
 </html>
+
+<!--
+    Development notes:
+    <TODO:>
+        1. tab key now is not function correctly in both h3 and p elements. Needs bug fixing.
+        2. undo function is not working in event when enter is pressed and needs to be built 
+        from scratch.(need to figure out a method to encode DOM elements in string form and 
+        decode method)
+        3. paragraph elements having text inside should prevent image insertion. A new element
+        for img should be inserted before the current element.
+        4. copy paste in header should be fixed for selected paste.
+-->

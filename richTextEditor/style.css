@@ -1,41 +1,101 @@
 body {
     position: absolute;
+    margin: 0;
     top: 0;
     left: 0;
     height: 100%;
-    width: 100%;
+    width: 100vw;
+    padding: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    border: 1px solid black;
+    border: 1px solid red;
+    overflow-x: hidden;
+    overflow-y: hidden;
     background-color: rgba(165, 165, 165, 0.096);
+}
+
+
+div.navigator-bar {
+    z-index: 1;
+    position: fixed !important;
+    left: 0;
+    top: 0;
+    margin: 0;
+    border: 1px black solid;
+    background-color: rgb(255, 255, 255);
+    height: 10vh;
+    width: 100%;
+
 }
 
 div#richText {
     position: relative;
-    border: 1px solid transparent;
+    border: 0px solid rgb(2, 52, 96);
     display: flex;
-    flex-direction: column;
-    align-items: center;
+
+    height: 90vh;
+    width: 100vw;
+    margin-top: 10vh;
+    margin-bottom: 10vh;
+    flex-direction: row;
     line-height: 1;
+    min-height: 500px;
+    overflow-y: hidden;
+    overflow-x: hidden;
 }
 
 div#mainEditor {
     position: relative;
-    height: 500px;
-    width: 80vw;
+
+    width: 100vw;
     background-color: white;
     border: 1px solid transparent;
     line-height: 1;
 
 }
 
-p#initialTitle {
+.separator {
+    position: relative;
+    display: flex;
+
+    justify-content: space-evenly;
+}
+
+.articleFrame {
+    position: relative;
+
+    min-height: 100px;
+}
+
+h3.articleHeader {
+    position: relative;
+    width: 80vw;
+    min-height: 50px;
+    line-height: 1.1;
+    margin: 0;
+    font-weight: normal;
+
+    font-size: 3rem;
+    border: 1px solid black;
+}
+
+
+p.articleParagraph {
+    position: relative;
+    width: 80vw;
+    margin-bottom: 0;
+    min-height: 15px;
+    line-height: 1.1;
+    border: 1px solid black;
+}
+
+span#initialTitle {
     position: absolute;
     left: 0;
     top: 0;
-    z-index: 2;
+    z-index: -2;
     user-select: none;
     opacity: 0.5;
     font-size: 1.5rem;
@@ -57,9 +117,11 @@ input#postArticle {
     width: 20vw;
     height: 10vh;
     background-color: white;
+
 }
 
 [contenteditable] {
-    max-height: 500px;
+    min-height: 500px;
     overflow: auto;
+    outline: none;
 }

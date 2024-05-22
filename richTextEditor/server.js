@@ -58,13 +58,13 @@ let server = http.createServer((req, res) => {
         requestBack.write("Can I get answer?");
         requestBack.end();
     }
-    if (req.url == "/photo.jpg") {
+    /*if (req.url == "/photo.jpg") {
         let pathImg = path.join(import.meta.dirname, "photo.jpg");
         let photoF = fs.readFileSync(pathImg, { flag: "r" });
         res.setHeader("Content-Type", "image/jpg");
         res.write(photoF);
         res.end();
-    }
+    }*/
 
 });
 
