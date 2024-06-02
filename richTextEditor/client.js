@@ -1,37 +1,263 @@
 let textEditor = document.getElementById("mainEditor");
 let initialTitle = document.getElementById("initialTitle");
-let templateP = document.getElementsByClassName("articleParagraph");
-let frame = document.getElementsByClassName('articleFrame')[0];
+//let templateP = document.getElementsByClassName("articleParagraph");
+let frame = document.getElementsByClassName('Frame')[0];
 let headers = document.getElementsByClassName('articleHeader');
 
+console.log("browser:", navigator.userAgent.toLowerCase())
 let pressed = false;
 let pasted = false;
 let data = undefined;
 let mesgRecord = "";
 
-console.log(typeof (null));
+let stringifiedDOM = [];
 
-let tes = document.createTextNode("#text");
-let BR = document.createElement("br");
-tes.textContent = "hello you!";
-console.log(tes, tes.nodeName);
-console.log(BR, BR.innerHTML);
+function DOMToJSON(DOMobj) {
+    let jsonObj = {};
 
-window.addEventListener('clipboardchange', () => {
-    //console.log('Clipboard contents changed');
-});
-textEditor.oncopy = function (event) {
-    //console.log("in copy event!!!!");
+    if (DOMobj.nodeName == "#text") {
+
+        jsonObj.nodeName = "#text";
+        jsonObj.textContent = DOMobj.textContent;
+
+        return jsonObj;
+    }
+    if (DOMobj.nodeName == "BR") {
+        jsonObj.nodeName = "BR";
+
+        return jsonObj;
+    }
+    //console.log("node:", DOMobj.nodeName);
+    let childrenList = [];
+
+    //jsonObj.class = DOMobj.className;
+
+    for (let att of DOMobj.attributes) {
+        //console.log(att.name, "---", att.value);
+        if (att.name == "name") {
+            jsonObj.name = DOMobj.getAttribute("name");
+            continue;
+        }
+        jsonObj[att.name] = att.value;
+
+    }
+    jsonObj.localName = DOMobj.localName;
+    for (let child of DOMobj.childNodes) {
+        if (child.nodeName != "#comment") {
+            let nextChild = DOMToJSON(child);
+            childrenList.push(nextChild);
+        }
+
+    }
+    jsonObj.childNodes = childrenList;
+    return jsonObj;
+};
+function JSONToDOM(DOM) {
+    if (DOM.nodeName == "#text") {
+        let textNode = document.createTextNode("#text");
+        textNode.textContent = DOM.textContent;
+        return textNode;
+    }
+    if (DOM.nodeName == "BR") {
+        let BR = document.createElement("br");
+        return BR;
+    }
+    let element = document.createElement(`${DOM.localName}`);
+    //console.log("DOM keys:", Object.keys(DOM));
+    let atts = Object.keys(DOM);
+    //console.log(typeof (atts));
+    for (let k of atts) {
+        //console.log(k);
+        if (k == "class") {
+            element['className'] = DOM[k];
+        } else if (k == "contenteditable") {
+            element.contentEditable = DOM[k];
+        } else if (k == "name") {
+            //console.log('name:!!!!!!!', DOM[k]);
+            element.setAttribute("name", DOM[k]);
+        }
+        else {
+            element[k] = DOM[k];
+        }
+
+    }
+    for (let child of DOM.childNodes) {
+        let childNode = JSONToDOM(child);
+        element.appendChild(childNode);
+    }
+    return element;
+}
+function replaceNodes(parent, replaceNs) {
+    console.log("in replacement:!!", parent, replaceNs);
+    while (parent.children.length != 0) {
+        parent.removeChild(parent.firstElementChild);
+    }
+    /* console.log("in replacement:!!", replaceNs.childNodes); */
+    for (let i = 0; i < replaceNs.children.length; i++) {
+        /* console.log("in replace:", replaceNs.children[i]) */
+        if (replaceNs.children[i].className && replaceNs.children[i].className.includes("article")) {
+            /* console.log("in replace:", replaceNs.children[i]) */
+            let c = replaceNs.children[i].cloneNode(true);
+
+            parent.appendChild(c);
+        };
+
+    }
+    return;
+}
+let clickNode = null;
+let clickEndNode = null;
+let clickOffset = -1;
+let clickEndOffset = -1;
+let indx = -1;
+let endIndx = -1;
+let outIndx = -1;
+let outEndIndex = -1;
+
+//set cursor position after undo commands;
+function setCursor(frame) {
+    let selection = document.getSelection();
+    let range = selection.getRangeAt(0);
+    /* console.log("in set:", clickNode, clickEndNode, indx, endIndx, outIndx, outEndIndex); */
+    if (clickEndNode == null || clickNode == null
+        || (indx < 0 && clickNode == "#text") || endIndx < 0 && clickEndNode == "#text" || outIndx < 0 || outEndIndex < 0 ||
+        outIndx >= frame.children.length || outEndIndex >= frame.children.length
+        || indx >= frame.children[outIndx].childNodes.length ||
+        endIndx >= frame.children[outEndIndex].childNodes.length) {
+        return;
+    }
+    //console.log("set:cursor!!!!!", frame.children, frame.children[outIndx].childNodes[indx], frame.children[outEndIndex].childNodes[endIndx]);
+    if (clickNode == "#text") {
+        range.setStart(frame.children[outIndx].childNodes[indx], clickOffset);
+    } else {
+        console.log("hey!")
+        range.setStart(frame.children[outIndx], clickOffset);
+    }
+    if (clickEndNode == "#text") {
+        range.setEnd(frame.children[outEndIndex].childNodes[endIndx], clickEndOffset);
+    } else {
+        console.log("hey")
+        range.setEnd(frame.children[outEndIndex], clickEndOffset);
+    }
+
+    selection.removeAllRanges();
+    selection.addRange(range);
+    return;
+
 }
 
-navigator.clipboard.addEventListener("clipboardchange", event => {
-    //console.log("clipboard changed!!!!dasdsadasdsad", event)
-});
+//save cursor status in the local memory indx, endIndx, outIndx, outEndIndx, 
+//clickNode, clickEndNode, clickOffset, clickEndOffset
+/* 1. indx contains the index of the first text node located which is selected
+     inside p or h3 element (is only positive when the first node selected is 
+        a text node)
+   2. endIndx contains the index of the last text node which is selected
+     inside p or h3 element(is only positive when the last node selected is 
+        a text node)
+   3. outIndx contains the index of first the p or h3 element which is selected
+    relative to its parent 'frame'.
+   4. outEndIndx contains the index of the p or h3 element where focus cursor
+    relative to its parent 'frame'.
+   5. clickNode (type string) contains nodeName of the 
+       first p or h3 node which is being selected
+   6. clickEndNode (type string) contains nodeName of the 
+       last p or h3 node which is being selected
+*/
+
+function saveCursor() {
+    let sel = document.getSelection();
+    let ran = sel.getRangeAt(0);
+    if (ran.startContainer.nodeName == "#text") {
+        indx = Array.from(ran.startContainer.parentNode.childNodes).indexOf(ran.startContainer);
+        //console.log("index:", Array.from(ran.startContainer.parentNode.childNodes).indexOf(ran.startContainer));
+    } else {
+        indx = 0;
+    }
+    if (ran.endContainer.nodeName == "#text") {
+        endIndx = Array.from(ran.endContainer.parentNode.childNodes).indexOf(ran.endContainer);
+        //console.log("endindex:", Array.from(ran.endContainer.parentNode.childNodes).indexOf(ran.endContainer));
+    } else {
+        endIndx = 0;
+    }
+    let stContainer = ran.startContainer.nodeName == "#text" ? ran.startContainer.parentNode : ran.startContainer;
+    outIndx = Array.from(frame.children).indexOf(stContainer);
+    let stOffset = ran.startOffset;
+    let edContainer = ran.endContainer.nodeName == "#text" ? ran.endContainer.parentNode : ran.endContainer;
+    let edOffset = ran.endOffset;
+    outEndIndex = Array.from(frame.children).indexOf(edContainer);
+    /* console.log("st:", ran.startContainer, stOffset, stContainer.childNodes.length, ran.startContainer.nodeName);
+    console.log("end:", ran.endContainer, edOffset, edContainer, ran.endContainer.nodeName);
+    console.log("outer:", outIndx, outEndIndex); */
+    clickOffset = stOffset;
+    clickEndOffset = edOffset;
+    clickNode = ran.startContainer.nodeName;
+    clickEndNode = ran.endContainer.nodeName;
+}
+
+function collapseText(editor, event, firstNodeClass) {
+    event.preventDefault();
+
+    //```save cursor position```
+    saveCursor();
+    let sel = getSelection();
+    let range = sel.getRangeAt(0);
+    //```save editor frame and inner DOM objects```
+    let encodeDOM = DOMToJSON(frame);
+    let stringified = JSON.stringify(encodeDOM);
+    stringifiedDOM.push(stringified);
+    /* console.log("saved:", stringifiedDOM); */
+    let firstChild = editor.children[0].children[0].firstElementChild;
+    let lastChild = editor.children[0].children[0].lastElementChild;
+    let aNode = sel.anchorNode.nodeName == "#text" ? sel.anchorNode.parentNode : sel.anchorNode;
+    /* console.log("anode:", aNode); */
+    let leftOffset = aNode === firstChild ? sel.anchorOffset : sel.focusOffset;
+    let rightOffset = aNode === firstChild ? sel.focusOffset : sel.anchorOffset;
+    //let mesg = sel.anchorNode;
+
+    let leftMsg = firstChild.textContent.slice(0, leftOffset);
+    let rightMsg = lastChild.textContent.slice(rightOffset, lastChild.textContent.length);
+    if (firstNodeClass == 'textEditorFrame') {
+        leftMsg = "<br>";
+        rightMsg = "<br>";
+    }
+    while (editor.children[0].children[0].children.length > 2) {
+        // console.log("length:", textEditor.children[0].children[0].children.length)
+        editor.children[0].children[0].removeChild(editor.children[0].children[0].firstElementChild.nextElementSibling);
+    }
+    /* console.log("left:", leftMsg, "right:", rightMsg, sel); */
+    firstChild.innerHTML = leftMsg;
+    lastChild.innerHTML = rightMsg;
+    //range.setEnd(textEditor.children[0].children[0].firstElementChild, 0);
+    let insertNode = document.createElement('p');
+    insertNode.className = "articleParagraph";
+    insertNode.setAttribute("name", "insertedParagraph");
+
+    let br = document.createElement("BR");
+    insertNode.appendChild(br);
+    /* console.log("parent:", firstChild.nextElementSibling); */
+    if (rightMsg.length && rightMsg != "<br>") {
+        firstChild.parentNode.insertBefore(insertNode, firstChild.nextElementSibling);
+    }
+
+    range.setStart(firstChild.nextElementSibling, 0);
+    //range.setEnd(firstChild.nextElementSibling, 0);
+    console.log("collapsed!!!!");
+    /* sel.removeAllRanges();
+    sel.addRange(range); */
+    sel.collapse(firstChild.nextElementSibling, 0);
+}
+
+function undo(DOMObj) {
+    console.log("undo:");
+    console.log(DOMObj);
+}
 
 frame.addEventListener("click", event => {
-    let sel = document.getSelection();
 
-    // console.log("selected elements:", sel, sel.getRangeAt(0));
+    let sel = document.getSelection();
+    //console.log("click", sel);
+    saveCursor();
+
     let leftMsg = "";
     let rightMsg = "";
     let selectedMsg = [];
@@ -117,19 +343,7 @@ frame.addEventListener("click", event => {
 
 })
 
-frame.addEventListener("copy", event => {
-    // console.log("in drop event!!!!!", event.clipboardData.getData("text/plain"));
 
-    // console.log("in copy:", sel);
-    //event.preventDefault();
-
-})
-
-for (let p of templateP) {
-    p.addEventListener("click", event => {
-        //console.log("I am clicked!!!!!", document.getSelection());
-    })
-}
 
 textEditor.addEventListener("paste", async (event) => {
 
@@ -142,11 +356,7 @@ textEditor.addEventListener("paste", async (event) => {
 
     let result = /.*(\r\n)+\"/g.exec(str);
     let trailingParagraph = 0;
-    // console.log("str:", str)
-    // console.log("str", str);
-    // console.log("match:", str, result);
-    // console.log("frame:", frame.children)
-    // console.log(str.slice(str.length - 9, str.length - 1));
+
     while (str.slice(str.length - 9, str.length - 1) == '\\r\\n\\r\\n') {
         str = str.slice(0, str.length - 9) + str[str.length - 1];
         trailingParagraph += 1;
@@ -245,9 +455,10 @@ textEditor.addEventListener("paste", async (event) => {
         // text after the right cursor to the last line. Set the cursor just before 
         // the text appended to the last line.
         if (anchor.nodeName == focus.nodeName && anchor === focus) {
-            console.log("paste1!!!!!!!")
+            console.log("paste1!!!!!!!", anchor.lastElementChild, anchor.lastChild, anchor.lastChild != null)
             anchor.innerHTML = mesgLeft;
             if (anchor.lastChild != null) {
+                console.log("'here!!!!!!!!'");
                 range.setStartAfter(anchor.lastChild);
             }
             let insertAnchor = anchor.nextElementSibling;
@@ -257,7 +468,11 @@ textEditor.addEventListener("paste", async (event) => {
                     let cursorOffset = anchor.innerHTML.length;
                     if (i == clipBoardArr.length - 1) {
                         anchor.innerHTML += mesgRight;
-                        range.setStart(anchor.lastChild, cursorOffset);
+                        console.log("lastChild:", anchor.lastChild, anchor.innerHTML.length);
+                        if (anchor.lastChild != null) {
+                            range.setStart(anchor.lastChild, cursorOffset);
+                        }
+
                     }
                     continue;
                 }
@@ -321,7 +536,7 @@ textEditor.addEventListener("paste", async (event) => {
 
         else if (anchor.nodeName != focus.nodeName) {
             // console.log("scenario 3!!!", anchor)
-            var headNode, tailNode;
+            let headNode, tailNode;
             if (anchor.nodeName == "H3") {
                 headNode = anchor;
                 tailNode = focus;
@@ -409,140 +624,48 @@ let curLine = 0;
 let textEditorStore = "";
 textEditor.addEventListener("keydown", event => {
     //keyHistory = {};
-
+    if (keyHistory['Control'] == "down" && event.key == "a") {
+        console.log("sel:", getSelection().getRangeAt(0));
+    }
     // console.log("current key:", event.key);
     console.log("control", keyHistory);
     keyHistory[event.key] = "down";
     if (event.key == "v") {
         if (keyHistory['Control']) {
 
-            // console.log("boom!!!!!booomooooooooomoooooom!!!!!!")
         }
     }
     if (event.key == "Control" || event.key == "Shift") {
         keyHistory[event.key] = "down";
         return;
     }
+    // undo:
     if (event.key == "z" && keyHistory["Control"] == "down") {
         console.log("undo!!!");
-        let richT = document.getElementById("richText");
-        console.log("rich text editor:", richT, document.getSelection());
-        //console.log("HTML collection:", HTMLCollection(['a', 'b', 'c']));
-        function printChildRecursive(DOM) {
-            console.log(DOM.nodeName, DOM.className, DOM.innerHTML, DOM.children, DOM);
-            if (DOM.nodeName == "#text" || DOM.nodeName == "BR") {
-                let pr = DOM.nameName == "#text" ? DOM.textContext : DOM.textContent;
-                console.log("text or BR", pr);
-
-            }
-            if (DOM.attributes && DOM.attributes.length) {
-                for (let att of DOM.attributes) {
-                    console.log(att.name, "---", att.value);
-
-                }
-            }
-
-            if (DOM.childNodes.length != 0) {
-                for (let child of DOM.childNodes) {
-                    printChildRecursive(child);
-                }
-            }
+        if (!stringifiedDOM.length) {
             return;
         }
-        function DOMToJSON(DOMobj) {
-            let jsonObj = {};
+        let richT = document.getElementById("richText");
+        //console.log("rich text editor:", richT, document.getSelection());
 
-            if (DOMobj.nodeName == "#text") {
 
-                jsonObj.nodeName = "#text";
-                jsonObj.textContent = DOMobj.textContent;
-
-                return jsonObj;
-            }
-            if (DOMobj.nodeName == "BR") {
-                jsonObj.nodeName = "BR";
-
-                return jsonObj;
-            }
-            console.log("node:", DOMobj.nodeName);
-            let childrenList = [];
-
-            //jsonObj.class = DOMobj.className;
-
-            for (let att of DOMobj.attributes) {
-                console.log(att.name, "---", att.value);
-                if (att.name == "name") {
-                    jsonObj.name = DOMobj.getAttribute("name");
-                    continue;
-                }
-                jsonObj[att.name] = att.value;
-
-            }
-            jsonObj.localName = DOMobj.localName;
-            console.log("has:", DOMobj.hasAttribute("name"), DOMobj.getAttribute("name"))
-            //jsonObj.textContent = DOMobj.textContent;
-            //jsonObj.innerHTML = DOMobj.innerHTML;
-            for (let child of DOMobj.childNodes) {
-                if (child.nodeName != "#comment") {
-                    let nextChild = DOMToJSON(child);
-                    childrenList.push(nextChild);
-                }
-
-            }
-            jsonObj.childNodes = childrenList;
-            return jsonObj;
-        };
-        printChildRecursive(richT);
-        richJSON = DOMToJSON(richT);
-        console.log(richJSON);
-        let textEditorEncode = JSON.stringify(richJSON);
-        console.log(textEditorEncode);
-        let textEditorDecode = JSON.parse(textEditorEncode);
+        let textEditorDecode = JSON.parse(stringifiedDOM[stringifiedDOM.length - 1]);
         console.log(textEditorDecode);
-        function JSONToDOM(DOM) {
-            if (DOM.nodeName == "#text") {
-                let textNode = document.createTextNode("#text");
-                textNode.textContent = DOM.textContent;
-                return textNode;
-            }
-            if (DOM.nodeName == "BR") {
-                let BR = document.createElement("br");
-                return BR;
-            }
-            let element = document.createElement(`${DOM.localName}`);
-            console.log("DOM keys:", Object.keys(DOM));
-            let atts = Object.keys(DOM);
-            console.log(typeof (atts));
-            for (let k of atts) {
-                console.log(k);
-                if (k == "class") {
-                    element['className'] = DOM[k];
-                } else if (k == "contenteditable") {
-                    element.contentEditable = DOM[k];
-                } else if (k == "name") {
-                    console.log('name:!!!!!!!', DOM[k]);
-                    element.setAttribute("name", DOM[k]);
-                }
-                else {
-                    element[k] = DOM[k];
-                }
-                console.log(DOM[k]);
-            }
-            console.log(element.children, element);
-            /* for (let k of Object.keys(DOM)) {
 
-                element[k] = DOM[k];
-            } */
-            for (let child of DOM.childNodes) {
-                let childNode = JSONToDOM(child);
-                element.appendChild(childNode);
-            }
-            return element;
-        }
+
+
         let e = JSONToDOM(textEditorDecode);
         console.log("converted:", e, e.childNodes);
         console.log("before conversion:", richT, richT.childNodes);
 
+        let rN = e;
+
+        const r = rN;
+        console.log('rn:', rN);
+
+        replaceNodes(frame, r);
+        setCursor(frame);
+        stringifiedDOM.pop();
     }
 
 
@@ -589,7 +712,6 @@ textEditor.addEventListener("keydown", event => {
 
         }
     }
-
 
 
     let cn = seli.focusOffset ? seli.focusNode.parentElement : seli.focusNode;
@@ -657,6 +779,7 @@ textEditor.addEventListener("keydown", event => {
     //console.log(range.startOffset)
 
     if (event.key == "Enter") {
+        console.log('enter pressed!!!!!!!!!!!!!!!', sel, range);
         //console.log("return!!!! shit:", keyHistory.hasOwnProperty("Shift"));
         if (keyHistory.hasOwnProperty("Shift")) {
             //console.log("down or up:", keyHistory["Shift"]);
@@ -671,32 +794,12 @@ textEditor.addEventListener("keydown", event => {
         // console.log("currentnode:", currentNode);
         let firstNode = range.startContainer.nodeName == "#text" ? range.startContainer.parentNode : range.startContainer;
         let endNode = range.endContainer.nodeName == "#text" ? range.endContainer.parentNode : range.endContainer;
-        /*  */console.log("meet?", currentNode.nodeName == "H3" && firstNode == endNode && range.startOffset == range.endOffset, sel, firstNode.nodeName)
-        if (firstNode.nodeName == "H3" && firstNode == textEditor.children[0].children[0].firstElementChild && endNode == textEditor.children[0].children[0].lastElementChild && endNode != firstNode) {
-            event.preventDefault();
-            let mesg = sel.anchorNode;
-            let leftMsg = firstNode.textContent.slice(0, sel.anchorOffset);
-            let rightMsg = endNode.textContent.slice(sel.focusOffset, endNode.textContent.length);
+        /* console.log("meet?", firstNode); */
 
-            while (textEditor.children[0].children[0].children.length > 2) {
-                // console.log("length:", textEditor.children[0].children[0].children.length)
-                textEditor.children[0].children[0].removeChild(textEditor.children[0].children[0].firstElementChild.nextElementSibling);
-            }
-            console.log("left:", leftMsg, "right:", rightMsg, sel);
-            firstNode.innerHTML = leftMsg;
-            endNode.textContent = rightMsg;
-            //range.setEnd(textEditor.children[0].children[0].firstElementChild, 0);
-            let insertNode = document.createElement('p');
-            insertNode.className = "articleParagraph";
-            console.log("parent:", firstNode.nextElementSibling);
-            if (rightMsg.length) {
-                firstNode.parentNode.insertBefore(insertNode, firstNode.nextElementSibling);
-            }
 
-            range.setStart(firstNode.nextElementSibling, 0);
+        if (firstNode.className == "textEditorFrame" || (firstNode.nodeName == "H3" && firstNode == textEditor.children[0].children[0].firstElementChild && endNode == textEditor.children[0].children[0].lastElementChild && endNode != firstNode)) {
 
-            console.log("collapsed!!!!")
-            sel.collapse(firstNode.nextElementSibling, 0);
+            collapseText(textEditor, event, firstNode.className);
 
 
         } else if (currentNode.nodeName == "H3" && firstNode == endNode && range.startOffset == range.endOffset) {
