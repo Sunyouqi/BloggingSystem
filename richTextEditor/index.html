@@ -1,35 +1,35 @@
 <!DOCTYPE html>
+<html lang="en">
 
 <head>
+    <title>rich text editor</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="author" content="Frank">
+
+    <link rel="stylesheet" href="style.css">
     <script src="https://code.jquery.com/jquery-3.7.1.slim.js"
         integrity="sha256-UgvvN8vBkgO0luPSUl2s8TIlOSYRoGFAX4jlCIm9Adc=" crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="style.css">
+
 </head>
 
 <body>
+
     <div class="navigator-bar">
+        <div class="web-Icon"><span>Blog.csun<span></span></div>
+
+        <div class="web-exit"><span>exit<span></span></div>
+        <div class="publish"><span>publish<span></div>
     </div>
     <div id="richText" class="richTextEditor">
-
-        <div id='mainEditor' class="textEditorFrame" contenteditable="true">
-            <div class="separator">
-                <div class="articleFrame">
-                    <!--p name="initialHeader" class="articleHead">hi</p-->
-                    <h3 name="initialParagraph" class="articleHeader"><br></h3>
-                    <p name="initialParagraph" class="articleParagraph"><br></p>
-                </div>
-            </div>
-        </div>
-        <!--span id="initialTitle">&nbsp;&nbsp;&nbsp;&nbsp;start typing...</span-->
-        <!--input id="postArticle" type="button" value="POST ARTICLE"></input-->
-
+        <custom-editor id='mainEditor' class="textEditorFrame" contenteditable="true">
+            <header-element id="para" name="initialHeader" class="articleHeader"><br></header-element>
+        </custom-editor>
     </div>
 
 </body>
-<script src="client.js"></script>
+
+<script src="type.js"></script>
 
 </html>
 
@@ -40,6 +40,7 @@
         2. undo function is not working in event when enter is pressed and needs to be built 
         from scratch.(need to figure out a method to encode DOM elements in string form and 
         decode method)
+        redo function needs to be implemented for delete and return.
         3. paragraph elements having text inside should prevent image insertion. A new element
         for img should be inserted before the current element.
         4. copy paste in header should be fixed for selected paste.

@@ -9,11 +9,16 @@ let host = "localhost";
 let server = http.createServer((req, res) => {
     console.log(req.url, " method:", req.method);
     let ext = path.extname(req.url);
+
     if (req.url == "/") {
         let filePath = path.join(import.meta.dirname, "index.html");
         //console.log(filePath);
         let mainPage = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" });
-        res.writeHead(200, { "Content-Type": "text/html;charset=utf8" });
+        res.writeHead(200, {
+            "Content-Type": "text/html;charset=utf-8",
+            "X-Content-Type-Options": "nosniff"
+
+        });
         res.write(mainPage);
         res.end();
     }
@@ -21,16 +26,38 @@ let server = http.createServer((req, res) => {
         let filePath = path.join(import.meta.dirname, "style.css");
 
         let styleSheet = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" });
-        res.writeHead(200, { "Content-Type": "text/css;charset=utf8" });
+        res.writeHead(200, {
+            "Content-Type": "text/css;charset=utf-8",
+            "X-Content-Type-Options": "nosniff"
+        });
         res.write(styleSheet);
         res.end();
     }
-    if (ext == '.js') {
+
+    if (req.url == '/client.js') {
         let filePath = path.join(import.meta.dirname, "client.js");
 
         let clientScript = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" });
-        res.writeHead(200, { "Content-Type": "application/javascript;charset=utf8" });
+        res.writeHead(200, {
+            "Content-Type": "application/javascript;charset=utf-8",
+            "X-Content-Type-Options": "nosniff"
+        });
         res.write(clientScript);
+        res.end();
+    }
+    if (req.url == "/type.js") {
+        let filePath = path.join(import.meta.dirname, "type.js");
+
+        let clientScript = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" });
+        res.writeHead(200, {
+            "Content-Type": "application/javascript;charset=utf-8",
+            "X-Content-Type-Options": "nosniff"
+        });
+        res.write(clientScript);
+        res.end();
+    }
+    if (req.url == "https://code.jquery.com/jquery-3.7.1.slim.js") {
+        res.writeHead(200, { "Content-Type": "application/javascript;charset=utf-8", "X-Content-Type-Options": "nosniff" });
         res.end();
     }
     if (req.url == "/POSTARTICLE") {
