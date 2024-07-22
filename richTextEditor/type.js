@@ -91,11 +91,22 @@
 
 //handleKeyDown
 ////////////////////////////////
-class newDiv {
-    constructor() {
-        console.log("construct new div element");
-    }
-}
+
+////development plan:
+////   need to construct method classes for 
+////   1. clicking(get anchor focus cursor information determine which comes first)
+////   2. GETCURSORINFO need to be in a separate class
+/* import createCustomButton from './buttons/button.js'
+import buttonList from './buttons/buttonStyle.js' */
+import navigatorBar from '/local_modules/navigatorBar/nav.js'
+
+import {
+    getCursorInforF, cursorBugF, determineAnchorFocusSequenceF,
+    setCursorObjF, alignFirstCursorF, alignLastCursorF,
+    extractCursorObjF, determineSelectedAllF
+} from './local_modules/cursor.js'
+
+
 class Editor extends HTMLElement {
 
     static browser = "";
@@ -105,16 +116,10 @@ class Editor extends HTMLElement {
     static undoCursorQueue;
     static redoNodes;
     static redoCursorQueue;
-
     static initialize = 0;
 
     constructor() {
         super();
-        //let head = new header3();
-        /* this.divList = [];
-        //console.log(head);
-        this.divList.push(new newDiv());
-        console.log(this.divList) */
 
     }
     connectedCallback() {
@@ -127,16 +132,41 @@ class Editor extends HTMLElement {
             Editor.undoCursorQueue = [];
             Editor.redoNodes = [];
             Editor.redoCursorQueue = [];
-
             Editor.initialize = 1;
         }
         this.addEventListener("keyup", this.handleKeyUp.bind(this));
         this.addEventListener("keydown", this.handleKeyDown, { capture: true });
         this.addEventListener("click", this.handleClick.bind(this));
-
+        this.addEventListener("paste", this.handlePaste.bind(this));
+        this.addEventListener('scroll', this.scrollHandler.bind(this));
         this.focus();
+    }
+    scrollHandler(event) {
+        console.log("scroll event:", event);
+    }
+    async handlePaste(event) {
+        //event.preventDefault();
+        let clipBoardData = await navigator.clipboard.read();
 
+        for (let d of clipBoardData) {
+            console.log(d, d.types);
+            for (let t of d.types) {
+                let c = await d.getType(t);
+                let typeArr = t.split('/')
+                console.log(c, typeArr[0]);
+                if (typeArr[0] == "text") {
+                    let text = await c.text();
+                    console.log(text.split('\n'));
+                }
 
+                if (t == "text/html") {
+                    console.log("html!!!!");
+                }
+            }
+        }
+        /* let texture = await navigator.clipboard.readText();
+        console.log("text", texture); */
+        return;
     }
     getLatestUndoCursor() {
         return Editor.undoCursorQueue[Editor.undoCursorQueue.length - 1];
@@ -197,195 +227,40 @@ class Editor extends HTMLElement {
 
 
     }
-    getCursorInfor() {
-        let sel = getSelection();
-
-
-        let curAnchorNode = sel.anchorNode;
-
-        if (curAnchorNode.nodeName == "HEADER-ELEMENT") {
-            curAnchorNode = sel.anchorNode;
-        } else if (curAnchorNode.nodeName == "#text" || curAnchorNode.nodeName == "BR") {
-            curAnchorNode = curAnchorNode.parentNode;
-        }
-
-        let curFocusNode = sel.focusNode;
-        if (curFocusNode.nodeName == "HEADER-ELEMENT") {
-            curFocusNode = sel.focusNode;
-        } else if (curFocusNode.nodeName == "#text" || curFocusNode.nodeName == "BR") {
-            curFocusNode = curFocusNode.parentNode;
-        }
-        //console.log("curFocusNode:", curFocusNode, sel);
-        let ancestorAnchorType = sel.anchorNode.parentNode.nodeName;
-        let ancestorAnchor = sel.anchorNode.parentNode;
-        let ancestorFocusType = sel.focusNode.parentNode.nodeName;
-        let ancestorFocus = sel.focusNode.parentNode;
-        var outerIndexA = -2;
-        var outerIndexF = -2;
-        if (curAnchorNode.nodeName == "CUSTOM-EDITOR") {
-            curAnchorNode = curAnchorNode.firstElementChild;
-            ancestorAnchorType = "HEADER-ELEMENT";
-        }
-        if (curFocusNode.nodeName == "CUSTOM-EDITOR") {
-
-            curFocusNode = curFocusNode.firstElementChild;
-            ancestorFocusType = "HEADER-ELEMENT";
-        }
-
-        if (ancestorAnchorType == "HEADER-ELEMENT") {
-
-            outerIndexA = Array(...sel.anchorNode.parentNode.parentNode.childNodes).indexOf(sel.anchorNode.parentNode);
-        }
-        if (ancestorFocusType == "HEADER-ELEMENT") {
-            outerIndexF = Array(...sel.focusNode.parentNode.parentNode.childNodes).indexOf(sel.focusNode.parentNode);
-        }
-
-        let ancestorIndxA = Array(...sel.anchorNode.parentNode.childNodes).indexOf(sel.anchorNode);
-        let ancestorIndxF = Array(...sel.focusNode.parentNode.childNodes).indexOf(sel.focusNode);
-        let offsetAnchor = sel.anchorOffset;
-        let offsetFocus = sel.focusOffset;
-        //console.log("selected ALL start from beginning", Editor.cursorStart)
-        if (Editor.cursorStart) {
-            //console.log("selected ALL start from beginning!!")
-            outerIndexA = 1;
-            ancestorIndxA = 0;
-            offsetAnchor = 0;
-        }
-        return {
-            aT: ancestorAnchorType,
-            oIA: outerIndexA,
-            aIA: ancestorIndxA,
-            oA: offsetAnchor,
-            fT: ancestorFocusType,
-            oIF: outerIndexF,
-            aIF: ancestorIndxF,
-            oF: offsetFocus,
-            cAN: curAnchorNode,
-            cFN: curFocusNode,
-        };
-    }
-
-    setCursorObj(cursorObj, at, oia, aia, oa, ft, oif, aif, of, can, cfn) {
-
-        cursorObj.aT = at;
-        cursorObj.oIA = oia;
-        cursorObj.aIA = aia;
-        cursorObj.oA = oa;
-        cursorObj.fT = ft;
-        cursorObj.oIF = oif;
-        cursorObj.aIF = aif;
-        cursorObj.oF = of;
-        cursorObj.cAN = can;
-        cursorObj.cFN = cfn;
-        return;
-    }
 
     saveCursor(action) {
 
 
-        let cursorObj = this.getCursorInfor();
-        //console.log("in save cursor:", curFocusNode.children, offsetFocus);
-        /* console.log("in save node:", cursorObj.cFN, cursorObj.cAN,
-            this.children.length, this.children[this.children.length - 1].childNodes
-        ); */
-
-        if (Editor.selectedAll && Editor.browser.includes("firefox")) {
-            /*  console.log("selected all!!!!!!", this.children, this.lastElementChild, Editor.undoNodes[Editor.undoNodes.length - 1]);
-             console.log("last state:", Editor.undoNodes[Editor.undoNodes.length - 1].firstElementChild.childNodes,
-                 Editor.undoNodes[Editor.undoNodes.length - 1].lastElementChild.childNodes
-             ) */
-
+        let cursorObj = getCursorInforF(this, Editor);
+        if (Editor.browser.includes("firefox")) {
             let lastState = this.getLatestUndoState();
-            //console.log("in save cursor last state:", lastState, lastState.lastElementChild.lastChild.previousSibling);
-            this.setCursorObj(cursorObj, "HEADER-ELEMENT", 1, 0, 0, "HEADER-ELEMENT", lastState.children.length,
-                lastState.lastElementChild.childNodes.length - 1,
-                0,
-                lastState.firstElementChild,
-                lastState.lastElementChild
-            );
+            if (Editor.selectedAll) {
+                //console.log("in save cursor last state:", lastState, lastState.lastElementChild.lastChild.previousSibling);
+                setCursorObjF(cursorObj, "HEADER-ELEMENT", 1, 0, 0, "HEADER-ELEMENT", lastState.children.length,
+                    lastState.lastElementChild.childNodes.length - 1,
+                    0,
+                    lastState.firstElementChild,
+                    lastState.lastElementChild
+                );
+            }
+            if (cursorObj.oIA === 3 && cursorObj.aIA === 1 && cursorObj.oIF === 3 && cursorObj.aIF === 1
+                && Math.abs(cursorObj.oA - cursorObj.oF) === 1) {
+                setCursorObjF(cursorObj, "HEADER-ELEMENT", cursorObj.oA, 0, 0, "HEADER-ELEMENT", cursorObj.oA,
+                    this.childNodes[cursorObj.oA].childNodes.length - 1,
+                    0,
+                    this.childNodes[cursorObj.oA],
+                    this.childNodes[cursorObj.oA]
+                );
+            }
         }
+
         if (action == "undo") {
             Editor.undoCursorQueue.push(cursorObj);
-            //console.log("queue undo:", Editor.undoCursorQueue);
         } else {
             Editor.redoCursorQueue.push(cursorObj);
-
         }
-        //console.log("selected all save", action, cursorObj, Editor.undoCursorQueue);
         return;
     }
-    ////////////////////////////////////////////////////////////////////////////////////
-    // function determine whether the anchor or the focus is at the front   ////////
-    // when text editor undo changes                                        ////////
-    ///////////////////////////////////////////////////////////////////////////////////
-    determineAnchorFocusSequence(cur) {
-        let first = 0;
-
-        if (cur.oIA >= 0 && cur.oIF >= 0) {
-            if (cur.oIA < cur.oIF) {
-
-                first = 1;
-            } else if (cur.oIA > cur.oIF) {
-
-                first = 0;
-            } else {
-
-                if (cur.aIA < cur.aIF) {
-                    first = 1;
-                } else if (cur.aIA > cur.aIF) {
-                    first = 0;
-                } else {
-                    if (cur.oA < cur.oF) {
-                        first = 1;
-                    } else {
-                        first = 0;
-                    }
-                }
-            }
-        } else if (cur.oIA < 0 && cur.oIF > 0) {
-            if (cur.aIA < cur.oIF) {
-                first = 1;
-            } else if (cur.aIA > cur.oIF) {
-                first = 0;
-            } else {
-                if (cur.oA < cur.aIF) {
-                    first = 1;
-                } else {
-                    first = 0;
-                }
-            }
-        } else if (cur.oIA > 0 && cur.oIF < 0) {
-            if (cur.oIA < cur.aIF) {
-                first = 1;
-            } else if (cur.oIA > cur.aIF) {
-                first = 0;
-            } else {
-                if (cur.aIA < cur.oF) {
-                    first = 1;
-                } else {
-                    first = 0;
-                }
-            }
-        } else {
-            if (cur.aIA < cur.aIF) {
-                first = 1;
-            } else if (cur.aIA > cur.aIF) {
-                first = 0;
-            } else {
-                if (cur.oA < cur.oF) {
-                    first = 1;
-                } else {
-                    first = 0;
-                }
-            }
-        }
-
-        return first;
-
-    }
-    ////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////////
     restoreCursor(action) {
         /* let cursorObj = {
             aT: ancestorAnchorType,
@@ -426,20 +301,14 @@ class Editor extends HTMLElement {
         } else {
             Editor.cursorStart = false;
         }
-        let f = this.determineAnchorFocusSequence(cur);
-        //console.log("restoring:", containerA, containerF, this, cur);
+        let f = determineAnchorFocusSequenceF(cur);
 
         if (f) {
             range.setStart(containerA.childNodes[cur.aIA], cur.oA);
             range.setEnd(containerF.childNodes[cur.aIF], cur.oF);
-            /* sel.removeAllRanges();
-            sel.addRange(range);
-    */
         } else {
             range.setEnd(containerA.childNodes[cur.aIA], cur.oA);
             range.setStart(containerF.childNodes[cur.aIF], cur.oF);
-            /* sel.removeAllRanges();
-            sel.addRange(range); */
         }
 
         cursorQueue.pop();
@@ -456,72 +325,10 @@ class Editor extends HTMLElement {
         Editor.redoCursorQueue = [];
         return;
     }
-    alignFirstCursor(firstCursor) {
 
-        //console.log("cursor infor:", firstCursor.firstParaDiv, firstCursor.firstNodeOffset, firstCursor.firstTextOffset);
-        return firstCursor.firstParaDiv == this.firstElementChild && !firstCursor.firstNodeOffset && (firstCursor.firstTextOffset <= 0);
-
-    }
-    alignLastCursor(lastCursor) {
-
-        let childList = this.lastElementChild.childNodes;
-        let textIndex = childList.length - 1;
-
-        while (childList[textIndex].nodeName !== "#text" && textIndex) {
-            textIndex--;
-        }
-        if (childList.length == 1) {
-            textIndex = -1;
-        }
-        //console.log("last cursor info:", lastCursor.lastParaDiv, lastCursor.lastNodeOffset, lastCursor.lastTextOffset);
-        //console.log(/* lastCursor.lastParaDiv == this.lastElementChild && */textIndex, lastCursor.lastNodeOffset,
-        //lastCursor.lastNodeOffset > textIndex /* && lastCursor.lastNodeOffset == lastCursor.lastParaDiv.childNodes.length - 1 */);
-        return (lastCursor.lastParaDiv == this.lastElementChild &&
-            (lastCursor.lastNodeOffset > textIndex && lastCursor.lastNodeOffset == lastCursor.lastParaDiv.childNodes.length - 1
-                || textIndex == lastCursor.lastParaDiv.childNodes.length - 2 && lastCursor.lastNodeOffset == textIndex
-                && lastCursor.lastTextOffset == lastCursor.lastParaDiv.childNodes[textIndex].length
-                || textIndex < 0));
-    }
-    extractCursorObj(lastCursorState) {
-        //console.log("exract:", lastCursorState);
-        let f = this.determineAnchorFocusSequence(lastCursorState);
-
-        let atextOffset = lastCursorState.oIA < 0 ? -1 : lastCursorState.oA;
-        let anodeOffset = lastCursorState.oIA < 0 ? lastCursorState.oA : lastCursorState.aIA;
-
-        let ftextOffset = lastCursorState.oIF < 0 ? -1 : lastCursorState.oF;
-        let fnodeOffset = lastCursorState.oIF < 0 ? lastCursorState.oF : lastCursorState.aIF;
-
-        let lastParaDiv = lastCursorState.cFN
-        let firstParaDiv = lastCursorState.cAN
-
-        let firstNodeOffset = anodeOffset;
-        let lastNodeOffset = fnodeOffset;
-        let firstTextOffset = atextOffset;
-        let lastTextOffset = ftextOffset;
-        if (!f) {
-            lastParaDiv = lastCursorState.cAN
-            firstParaDiv = lastCursorState.cFN
-            firstNodeOffset = fnodeOffset;
-            lastNodeOffset = anodeOffset;
-            firstTextOffset = ftextOffset;
-            lastTextOffset = atextOffset;
-        }
-        return {
-            first: { firstParaDiv, firstNodeOffset, firstTextOffset },
-            last: { lastParaDiv, lastNodeOffset, lastTextOffset }
-        }
-    }
-    determineSelectedAll() {
-        let lastCursorState = this.getCursorInfor();
-        let { first, last } = this.extractCursorObj(lastCursorState);
-
-        return this.alignFirstCursor(first)
-            && this.alignLastCursor(last);
-
-    }
     handleClick(event) {
-
+        //testScope()();
+        //Editor.doubleClicked = false;
         let node = this.cloneNode(true);
         this.saveState("undo", node);
         this.saveCursor("undo");
@@ -533,75 +340,59 @@ class Editor extends HTMLElement {
         while (childList[textIndex].nodeName !== "#text" && textIndex) {
             textIndex--;
         }
-        //console.log("clicked", this.getLatestUndoCursor(), Editor.undoCursorQueue);
-        //let focusOffsetV = this.getLatestUndoCursor().oIF < 0 ? this.getLatestUndoCursor().oF : this.getLatestUndoCursor().aIF;
-        /* console.log("compare to", this.lastElementChild,
-            this.lastElementChild.lastElementChild
-            , Array.from(this.lastElementChild.childNodes).indexOf(this.lastElementChild.lastElementChild)
-            , lastMsg
-            , Array.from(childList).indexOf(lastMsg)
-            , "focus offset:", focusOffsetV
-            , "lasttext index:", textIndex, childList[textIndex]
-            , this.lastElementChild, this.firstElementChild
-            , focusOffsetV >= textIndex
-            , getSelection(),
-            "selected all????", this.determineSelectedAll()
 
-        ); */
-        //console.log("selected all????", this.determineSelectedAll());
         // need to handle the situation when alt + a pressed and user hold shift and click
         // the end of the container.
         // still need polishing ...
+
         if (Editor.selectedAll) {
-            //console.log("key history:", Editor.keyHistory);
+            /* console.log("key history:", Editor.keyHistory); */
             let LAST = false;
             if (Editor.keyHistory["Shift"] == "Down") {
-                LAST = this.alignLastCursor(this.extractCursorObj(this.getCursorInfor()).last);
-                //console.log('last?:', LAST, this.extractCursorObj(this.getLatestUndoCursor()).last);
+                Editor.selectedAll = false;
+                LAST = alignLastCursorF(extractCursorObjF(getCursorInforF(this, Editor)).last, this);
+                /* console.log('last?:', LAST, this.extractCursorObj(this.getLatestUndoCursor()).last); */
+                Editor.selectedAll = true;
             }
             if (!LAST) {
                 Editor.selectedAll = false;
             }
 
         }
-        console.log(Editor.keyHistory.hasOwnProperty("count"), Editor.keyHistory["count"])
-        if (Editor.keyHistory["count"] == 3) {
-            Editor.keyHistory["count"] = 1;
-            let sel = getSelection();
-            let range = sel.getRangeAt(0);
-            let cursor = this.getCursorInfor();
-            let f = this.determineAnchorFocusSequence(cursor);
-            let lastCursorNode = cursor.cFN;
-            let nodeIndex = cursor.oIF >= 0 ? cursor.aIF : cursor.oF;
-            let textIndex = cursor.oIF >= 0 ? cursor.oF : -1;
-            //console.log("cursor:", cursor);
-            if (!f) {
-                lastCursorNode = cursor.cAN;
-                nodeIndex = cursor.oIA >= 0 ? cursor.aIA : cursor.oA;
-                textIndex = cursor.oIA >= 0 ? cursor.oA : -1;
-            }
-            let curNode = textIndex >= 0 ? lastCursorNode.childNodes[nodeIndex] : lastCursorNode;
-            let offsetN = textIndex >= 0 ? textIndex : 0;
-            range.setStart(curNode, offsetN);
-            range.setEnd(curNode, offsetN);
-            sel.removeAllRanges();
-            sel.addRange(range);
-        }
 
+        let cursor = getCursorInforF(this, Editor);
+        console.log(cursor);
         if (Editor.keyHistory["Shift"] == "Up") {
-            let cursor = this.getCursorInfor();
-            /* if (cursor.oIA == 3 && cursor.aIA == 1 && cursor.oA == 0 && cursor.cAN === this.firstElementChild) {
-                return;
-            } */
-            console.log("unset cursor start", cursor)
+            let cursor = getCursorInforF(this, Editor);
+            if ((cursor.oIA == 1 && cursor.aIA == 0 && cursor.oA == 0)
+                && Editor.cursorStart
+            ) {
+                let sel = getSelection();
+                let range = sel.getRangeAt(0);
+
+                let { first, last } = extractCursorObjF(cursor);
+
+                let curNode = last.lastTextOffset >= 0 ? last.lastParaDiv.childNodes[last.lastNodeOffset] : last.lastParaDiv;
+                let offsetN = last.lastTextOffset >= 0 ? last.lastTextOffset : 0;
+                switch (curNode.nodeName) {
+                    case "BR": {
+                        offsetN = 0;
+                    }
+                    case "#text": {
+                        offsetN = offsetN >= curNode.textContent.length ? curNode.textContent.length - 1 : offsetN;
+                    }
+                    case "HEADER-ELEMENT": {
+                        offsetN = offsetN >= curNode.childNodes.length ? curNode.childNodes.length - 1 : offsetN;
+                    }
+                }
+                offsetN = offsetN < 0 ? 0 : offsetN;
+                console.log("setting::", curNode, offsetN, Editor.cursorStart, cursor);
+                range.setStart(curNode, offsetN);
+                range.setEnd(curNode, offsetN);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
             Editor.cursorStart = false;
-        } else {
-            if (!Editor.keyHistory.hasOwnProperty("count") || Editor.keyHistory["count"] == 3) {
-                Editor.keyHistory["count"] = 1;
-            }
-            else if (Editor.keyHistory.hasOwnProperty("count") && Editor.cursorStart) {
-                Editor.keyHistory["count"] += 1;
-            }
         }
         return;
     }
@@ -632,42 +423,71 @@ class Editor extends HTMLElement {
 
     //selected all needs debug
     //
-    //new bugs: press enter multiple times will cause the text to disappear.(fix proposed needs tests)
+    // 1. new bugs: press enter multiple times will cause the text to disappear.(fix proposed needs tests)
     //
-    //new bugs: select all text and press enter then press 
+    // 2. new bugs: select all text and press enter then press 
     //          backspace will end up delete the last div in article
+    // 3. new bug: first div has issue deleting when user press backSpace.
+    //          try to get the first div fixed in place.
+    // 4. new bug: double click a paragraph div element and press any letter key will delete the element
+    // potential solution: ondclick event handler
+    // 5. new bug: deleting the first element when there are more than one element in editor will cause overflow
+    // 6. *new bugs: when cursor is placed at the back of a block and press Shift arrowup and type some letter
+    //           it will appear at the line above this line. Repeat this operation and delete the first block
+    //           and you get letters out of border.
+    //           
+    //
+    getMesg(first, last, keyV) {
+        let lmsg = [];
+        let rmsg = [];
+
+        for (let i = 0; i < first.firstNodeOffset; i++) {
+            lmsg.push(first.firstParaDiv.childNodes[i]);
+
+        }
+        let msg = "";
+        if (first.firstTextOffset > 0 && first.firstNodeOffset < first.firstParaDiv.childNodes.length) {
+            msg = (first.firstParaDiv.childNodes[first.firstNodeOffset].textContent.slice(0, first.firstTextOffset));
+
+        }
+        if (keyV && keyV !== "Backspace") {
+            msg += keyV;
+        }
+        if (msg.length) {
+            let t = document.createTextNode(msg);
+            lmsg.push(t);
+        }
+
+        if (last.lastTextOffset >= 0 && last.lastNodeOffset < last.lastParaDiv.childNodes.length
+            && last.lastTextOffset < last.lastParaDiv.childNodes[last.lastNodeOffset].textContent.length) {
+            let t_ = document.createTextNode(last.lastParaDiv.childNodes[last.lastNodeOffset].textContent.slice(last.lastTextOffset));
+            rmsg.push(t_);
+        }
+
+        for (let i = (last.lastTextOffset >= 0) ? (last.lastNodeOffset + 1) : (last.lastNodeOffset); i < last.lastParaDiv.childNodes.length; i++) {
+            rmsg.push(last.lastParaDiv.childNodes[i]);
+
+        }
+        if (rmsg.length && rmsg[0].nodeName == "BR") {
+            rmsg.shift();
+        }
+        console.log(lmsg, rmsg)
+        return { leftMsg: lmsg, rightMsg: rmsg };
+    }
+
     fireFoxEnter(event, key) {
         if (!Editor.browser.includes("firefox") || key !== "Enter"
             || Editor.keyHistory["Shift"] == "Down") {
             return;
         }
-        //console.log("firefox enter")
-        //event.preventDefault();
-        //console.log("enter!!!", Editor.cursorStart);
+
         let sel = getSelection();
         let range = sel.getRangeAt(0);
 
-        let cursorObj = this.getCursorInfor();
-
-        let f = this.determineAnchorFocusSequence(cursorObj);
-
-        let curAnchorNode = cursorObj.cAN;
-        let curFocusNode = cursorObj.cFN;
-
-        /* console.log(curAnchorNode, curAnchorNode.nodeName, curAnchorNode.nodeName == "HEADER-ELEMENT",
-            curFocusNode, curFocusNode.nodeName
-        ); */
+        let cursorObj = getCursorInforF(this, Editor);
         //get start and end node of current selection:
         // this can be summarized as a function.
         //start and end node offset and textOffset (if it is a node, textOffset is 0)
-
-        let startNode = curAnchorNode;
-        let endNode = curFocusNode;
-        if (!f) {
-            startNode = curFocusNode;
-            endNode = curAnchorNode;
-        }
-        //console.log("start:", startNode, "end:", endNode, cursorObj);
 
         let newP = document.createElement("header-element");
         newP.setAttribute("id", "para");
@@ -679,119 +499,88 @@ class Editor extends HTMLElement {
             this.deleteAllChildrenExceptTheFirst(sel, range);
             //return;
             newP.innerHTML = "<br>";
-            //console.log("startnode:", startNode, startNode.nextSibling);
-            console.log(this.lastChild)
             this.insertBefore(newP, this.lastChild);
             range.setStart(this.lastElementChild, 0);
             range.setEnd(this.lastElementChild, 0);
-            /* sel.removeAllRanges();
-            sel.addRange(range); */
-            console.log(this.childNodes)
+
             return;
 
         }
-        console.log("cursor:", cursorObj)
-        //console.log("enter firefox");
-        //console.log("enter:", sel.anchorOffset, sel.focusOffset, sel.focusNode,
-        //Array(...curAnchorNode.parentNode.childNodes).indexOf(curAnchorNode)
-        //);
 
-        let nodeOffset = cursorObj.oIA < 0 ? cursorObj.oA : cursorObj.aIA;
-        let textOffset = cursorObj.oIA < 0 ? -1 : cursorObj.oA;
-
-        let fnodeOffset = cursorObj.oIF < 0 ? cursorObj.oF : cursorObj.aIF;
-        let ftextOffset = cursorObj.oIF < 0 ? -1 : cursorObj.oF;
-
-        let startNodeOffset = nodeOffset;
-        let startTextOffset = textOffset;
-        let endNodeOffset = fnodeOffset;
-        let endTextOffset = ftextOffset;
-        if (!f) {
-            startNodeOffset = fnodeOffset;
-            startTextOffset = ftextOffset;
-            endNodeOffset = nodeOffset;
-            endTextOffset = textOffset;
-        }
+        let { first, last } = extractCursorObjF(cursorObj);
         //console.log("offset:", startNodeOffset, startTextOffset);
 
-        if (startNode !== endNode) {
+        if (first.firstParaDiv !== last.lastParaDiv) {
             //console.log("startNode:", startNode, "endNode:", endNode);
-            while (startNode.nextElementSibling !== endNode) {
-                //console.log("remove:",     startNode.nextElementSibling, endNode.innerHTML, startNode.nextElementSibling != endNode);
-                console.log(startNode.nextElementSibling, startNode)
-                this.removeChild(startNode.nextElementSibling);
+            while (first.firstParaDiv.nextElementSibling !== last.lastParaDiv) {
 
-
+                this.removeChild(first.firstParaDiv.nextElementSibling);
             }
         }
 
         // get the message on the left and right side of the current cursor.
         // this can be returned as a result of a function
 
-        let leftMsg = [];
-        let rightMsg = [];
-        console.log("starrrrrt:::", startNodeOffset, startTextOffset, Editor.cursorStart);
-        for (let i = 0; i < startNodeOffset; i++) {
-            //console.log(startNodeOffset, startNode.childNodes[i]);
-            leftMsg.push(startNode.childNodes[i]);
+        let { leftMsg, rightMsg } = this.getMesg(first, last, null);
+        console.log(leftMsg, rightMsg)
+        /* for (let i = 0; i < first.firstNodeOffset; i++) {
+            leftMsg.push(first.firstParaDiv.childNodes[i]);
 
         }
-        if (startTextOffset > 0) {
-            let t = document.createTextNode(startNode.childNodes[startNodeOffset].textContent.slice(0, startTextOffset));
+        if (first.firstTextOffset > 0) {
+            let t = document.createTextNode(first.firstParaDiv.childNodes[first.firstNodeOffset].textContent.slice(0, first.firstTextOffset));
             leftMsg.push(t);
         }
 
-        console.log("left:", leftMsg);
-
-        if (endTextOffset >= 0 && endTextOffset < endNode.childNodes[endNodeOffset].textContent.length) {
-            let t_ = document.createTextNode(endNode.childNodes[endNodeOffset].textContent.slice(endTextOffset));
+        if (last.lastTextOffset >= 0 && last.lastTextOffset < last.lastParaDiv.childNodes[last.lastNodeOffset].textContent.length) {
+            let t_ = document.createTextNode(last.lastParaDiv.childNodes[last.lastNodeOffset].textContent.slice(last.lastTextOffset));
             rightMsg.push(t_);
         }
-        //console.log("before right msg", rightMsg, endTextOffset)
 
-        for (let i = (endTextOffset >= 0) ? (endNodeOffset + 1) : (endNodeOffset); i < endNode.childNodes.length; i++) {
-            rightMsg.push(endNode.childNodes[i]);
-            //console.log("right push", endNode.childNodes[i])
+        for (let i = (last.lastTextOffset >= 0) ? (last.lastNodeOffset + 1) : (last.lastNodeOffset); i < last.lastParaDiv.childNodes.length; i++) {
+            rightMsg.push(last.lastParaDiv.childNodes[i]);
 
         }
-        //console.log("right msg", rightMsg)
         if (rightMsg.length && rightMsg[0].nodeName == "BR") {
             rightMsg.shift();
-        }
+        } */
 
-        console.log("right:", endNodeOffset, endNode.childNodes, rightMsg);
+        //console.log("right:", endNodeOffset, endNode.childNodes, rightMsg);
 
         ///////push left and right message into the start and end nodes
-
+        console.log("left:", leftMsg);
         if (leftMsg.length) {
 
-            while (startNode.childNodes.length) {
-                startNode.removeChild(startNode.lastChild);
+            while (first.firstParaDiv.childNodes.length) {
+                first.firstParaDiv.removeChild(first.firstParaDiv.lastChild);
             }
             for (let m of leftMsg) {
-                startNode.appendChild(m);
+                first.firstParaDiv.appendChild(m);
             }
-            let brNode = document.createElement("br");
-            startNode.appendChild(brNode);
-
+            if (first.firstParaDiv.lastChild.nodeName !== "BR"
+                && first.firstParaDiv === last.lastParaDiv
+            ) {
+                let brNode = document.createElement("br");
+                first.firstParaDiv.appendChild(brNode);
+            }
         } else {
-            startNode.innerHTML = "<br>";
+            first.firstParaDiv.innerHTML = "<br>";
         }
         //console.log(rightMsg.length)
-        if (startNode !== endNode) {
+        if (first.firstParaDiv !== last.lastParaDiv) {
             newP.innerHTML = "<br>";
             if (rightMsg.length) {
 
-                while (endNode.childNodes.length) {
-                    endNode.removeChild(endNode.lastChild);
+                while (last.lastParaDiv.childNodes.length) {
+                    last.lastParaDiv.removeChild(last.lastParaDiv.lastChild);
                 }
                 for (let m of rightMsg) {
-                    endNode.appendChild(m);
+                    last.lastParaDiv.appendChild(m);
                 }
                 let brNode = document.createElement("br");
-                startNode.appendChild(brNode);
+                first.firstParaDiv.appendChild(brNode);
             } else {
-                endNode.innerHTML = "<br>";
+                last.lastParaDiv.innerHTML = "<br>";
             }
         } else {
             if (rightMsg.length) {
@@ -803,9 +592,59 @@ class Editor extends HTMLElement {
                 newP.innerHTML = "<br>";
             }
         }
-        this.insertBefore(newP, startNode.nextSibling);
+        this.insertBefore(newP, first.firstParaDiv.nextSibling);
         range.setStart(newP, 0);
         range.setEnd(newP, 0);
+
+        ////////////////////////////////////////////////////////
+        //// adjust viewport position:  /////////////////////
+        ///////////////////////////////////////////////////
+        let lines = 0;
+        for (let c of this.children) {
+            for (let n of c.childNodes) {
+                if (n.nodeName === "BR") {
+                    lines += 1;
+                }
+            }
+        }
+        let height = 0;
+        /* for (let i = 0; i < firstOuterIndex; i++) {
+            for (let n of this.childNodes[i].childNodes) {
+                if (n.nodeName === "BR") {
+                    lines += 1;
+                }
+            }
+        } */
+        let firstOuterIndex = Array.from(this.childNodes).indexOf(first.firstParaDiv);
+        //console.log("first out index", firstOuterIndex);
+        let nBR = 0;
+        let brTotal = 0;
+        for (let i = 0; i < this.childNodes[firstOuterIndex].childNodes.length; i++) {
+            /* if (i < firstNodeIndex) {
+                if (this.childNodes[firstOuterIndex].childNodes[i].nodeName === "BR") {
+                    nBR += 1;
+                }
+            } */
+            if (this.childNodes[firstOuterIndex].childNodes[i].nodeName === "BR") {
+                brTotal += 1;
+            }
+        }
+        let line_height = this.childNodes[firstOuterIndex].clientHeight / brTotal * nBR;
+
+        for (let i = 0; i <= firstOuterIndex; i++) {
+            if (this.childNodes[i].nodeName === "HEADER-ELEMENT") {
+                height += this.childNodes[i].clientHeight;
+            }
+        }
+        //console.log(line_height, height);
+        //height = height + (line_height);
+        //console.log("enter firefox", height, first.firstParaDiv.getBoundingClientRect(), window.innerHeight);
+        if (first.firstParaDiv.getBoundingClientRect().top < 60) {
+            window.scroll(0, height);
+        }
+        if (first.firstParaDiv.getBoundingClientRect().top > window.innerHeight - 100) {
+            window.scroll(0, height - window.innerHeight + 150);
+        }
 
     }
     handleKeyUp(event) {
@@ -832,26 +671,18 @@ class Editor extends HTMLElement {
 
         }
 
-        //this.fireFoxGridCheck();
-
     }
     fireFoxBackSpace(event, sel, range) {
 
         console.log("mozilla back")
         if (Editor.browser.includes("firefox")) {
-            let cursorObj = this.getCursorInfor();
-            let state = this.getLatestUndoState();
+            let cursorObj = getCursorInforF(this, Editor);
+            console.log("fire mozilla back")
             let node = cursorObj.cAN;
-            let lastNode = cursorObj.cFN;
-            let FIndex = cursorObj.oIF > 0 ? cursorObj.oIF : cursorObj.aIF;
-            let AIndex = cursorObj.oIA > 0 ? cursorObj.oIA : cursorObj.aIA;
-            let offsetAv = cursorObj.oIA > 0 ? cursorObj.aIA : cursorObj.oA;
-            let offsetFv = cursorObj.oIF > 0 ? cursorObj.aIF : cursorObj.oF;
-            let selectedAllB = 0;
-            let idifference = Math.abs(AIndex - FIndex) + 1;
 
-            if (Editor.selectedAll || this.determineSelectedAll()) {
-                //console.log("selected all and remove all");
+            let { first, last } = extractCursorObjF(cursorObj);
+            if (Editor.selectedAll || determineSelectedAllF(this, Editor)) {
+                console.log("selected all and remove all", Editor.selectedAll, determineSelectedAllF(this, Editor));
                 event.preventDefault();
                 this.deleteAllChildrenExceptTheFirst(sel, range);
 
@@ -862,51 +693,71 @@ class Editor extends HTMLElement {
                     textNodesCount += 1;
                 }
             }
-            if (!(Editor.selectedAll) && !(sel.anchorOffset) && !(sel.focusOffset)
-                && node === this.firstElementChild && lastNode !== this.lastElementChild
-                && node === lastNode && textNodesCount == 1) {
-                console.log("heree213", sel, node, lastNode, textNodesCount);
+
+            console.log("in back", !(Editor.selectedAll), node === this.firstElementChild, first, last)
+            if (!(Editor.selectedAll) && (first.firstTextOffset) <= 0 && (last.lastTextOffset) <= 0
+                && node === this.firstElementChild && first.firstNodeOffset == 0 && last.lastNodeOffset == 0
+                && last.lastOuterIndex === 1 && first.firstOuterIndex === 1) {
+
                 event.preventDefault();
+                console.log("inside !!!!!", textNodesCount < 1 && this.children.length > 1, node, this.children.length, textNodesCount)
+                if (textNodesCount < 1 && this.children.length > 1) {
+
+                    this.removeChild(this.firstElementChild);
+                    let sel = getSelection();
+                    let range = sel.getRangeAt(0);
+                    range.setStart(this.firstElementChild, 0);
+                    range.setEnd(this.firstElementChild, 0);
+                }
+
             }
-            // console.log("node number:", this.childNodes, this.firstElementChild);
-
-
+            if (first.firstNodeOffset === 0 && last.lastNodeOffset === 0 && last.lastOuterIndex < first.firstOuterIndex && cursorObj.oIF === -2 && cursorObj.oIA === first.firstOuterIndex) {
+                /* this.removeChild(cursorObj.cAN);
+                range.setEnd(cursorObj.cFN, 0); */
+                console.log("condition met!!!", cursorObj.cAN);
+            }
         }
     }
     fireFoxGridCheck(editor) {
-        //console.log("check:")
+
         for (let c of editor.children) {
-            //console.log(c, c.innerHTML);
+
             if (c.innerHTML === "") {
                 editor.removeChild(c);
             }
         }
         return;
     }
+
     handleKeyDown(event) {
+
+        let curCursor = getCursorInforF(this, Editor);
+        console.log(curCursor);
+
+        if (Editor.browser.includes('firefox') && cursorBugF(curCursor, "keydown", Editor) && !Editor.selectedAll
+        ) {
+            console.log('out of border');
+            event.preventDefault();
+            //return;
+        }
+
+        //WITH BACKSPACE KEY
+        let selectAllV = determineSelectedAllF(this, Editor);
         function letterKeyPressed(key) {
             return Editor.keyHistory[`Control`] != "Down" && key != "CapsLock" && key != "Shift"
                 && key != "Tab" && key != "Alt" && key != "ArrowLeft" && key != "ArrowUp"
                 && key != "ArrowDown" && key != "ArrowRight" && key != "Enter" && key != "Meta";
         }
-        function alphaNumericKeyOnly(key) {
 
-            return (key >= 'a' && key <= 'z' || key >= 'A' && key <= 'Z' || key >= '0' && key <= '9')
-                && Editor.keyHistory[`Control`] != "Down" && key != "CapsLock" && key != "Shift"
-                && key != "Tab" && key != "Alt" && key != "ArrowLeft" && key != "ArrowUp"
-                && key != "ArrowDown" && key != "ArrowRight" && key != "Enter";
-        }
         function isDirectionKey(key) {
             return (key == "ArrowDown" || key == "ArrowUp" || key == "ArrowLeft" || key == "ArrowRight");
         }
 
         Editor.keyHistory[`${event.key}`] = "Down";
-        //console.log("key pressed:", getSelection(), this.getLatestUndoCursor());
+        //console.log("key pressed:", Editor.cursorStart);
         if (event.key == "a" || event.key == "A") {
 
             if (Editor.keyHistory[`Control`] == "Down") {
-
-                //console.log("select all")
                 Editor.selectedAll = true;
                 Editor.cursorStart = true;
                 let node = this.cloneNode(true);
@@ -920,24 +771,39 @@ class Editor extends HTMLElement {
             let sel = getSelection();
             let range = sel.getRangeAt(0);
             this.fireFoxBackSpace(event, sel, range);
-
             //for IE and Chrome:
             if (!Editor.browser.includes("firefox") && this.children.length == 1 && !(sel.anchorOffset)) {
-                //console.log("3");
                 event.preventDefault();
             }
 
         }
-        console.log("KEY:", event.key.codePointAt(0), event.key,
-            "cursor start:", Editor.cursorStart, "selectedAll:", Editor.selectedAll);
-        if (letterKeyPressed(event.key) || event.key == "Enter") {
 
-            //console.log("KEY:", event.key.codePointAt(0), event.key);
-            // NEEDS IMPROVEMENTS !!!!
-            let selectAllV = this.determineSelectedAll();
-            if (Editor.browser.includes("firefox")) {
+        // NEEDS IMPROVEMENTS !!!!
+
+        if (Editor.browser.includes("firefox")) {
+            if (letterKeyPressed(event.key) || event.key == "Enter") {
+                function checkDoubleClick(event, editor) {
+                    for (let c of editor.children) {
+                        if (c.doubleClicked) {
+                            event.preventDefault();
+                            let sel = getSelection();
+                            let range = sel.getRangeAt(0);
+                            if (event.key !== "Backspace" && event.key !== "Enter") {
+                                c.innerHTML = event.key + "<br>";
+                                range.setStart(c, 1);
+                                range.setEnd(c, 1);
+                            } else {
+                                c.innerHTML = "<br>";
+                                range.setStart(c, 0);
+                                range.setEnd(c, 0);
+                            }
+                        }
+                        c.doubleClicked = false;
+                    }
+                }
+                checkDoubleClick(event, this);
                 if (event.key == "Enter" && Editor.keyHistory["Shift"] !== "Down" || (Editor.selectedAll || selectAllV) && event.key != "Backspace") {
-                    console.log("triggered!", selectAllV)
+                    //console.log("triggered!", selectAllV)
                     event.preventDefault();
                     if ((Editor.selectedAll || selectAllV) && event.key !== "Enter") {
                         let sel = getSelection();
@@ -947,21 +813,97 @@ class Editor extends HTMLElement {
                         this.firstElementChild.insertBefore(node, this.firstElementChild.lastChild);
                         range.setStart(this.firstElementChild, 1);
                         range.setEnd(this.firstElementChild, 1);
+
                     }
                 }
+
+                let node = this.cloneNode(true);
+                this.saveState("undo", node);
+                this.saveCursor("undo");
+                this.clearRedo();
+
+                this.fireFoxEnter(event, event.key);
             }
+            // console.log(Editor.keyHistory["Shift"] === "Down" && event.key === "ArrowRight" && Editor.selectedAll);
+
             //console.log("key pressed");
-            let node = this.cloneNode(true);
-            this.saveState("undo", node);
-            this.saveCursor("undo");
-            this.clearRedo();
+            if (event.key === "ArrowUp") {
+                let cursor = getCursorInforF(this, Editor);
+                let { first, last } = extractCursorObjF(cursor);
+                if (!cursorBugF(cursor, "arrow Up", Editor)
+                    &&
+                    first.firstOuterIndex < this.childNodes.length
+                    /* || cursor.oIF > this.children.length
+                    || cursor.oIA > this.children.length */) {
+                    /* console.log('bug', cursor.cAN, cursor); */
 
-            this.fireFoxEnter(event, event.key);
-            //return;
 
-            //Editor.cursorStart = false;
+                    let height = 0;
+
+                    let nBR = 0;
+                    let brTotal = 0;
+                    for (let i = 0; i < this.childNodes[first.firstOuterIndex].childNodes.length; i++) {
+                        if (i < first.firstNodeOffset) {
+                            if (this.childNodes[first.firstOuterIndex].childNodes[i].nodeName === "BR") {
+                                nBR += 1;
+                            }
+                        }
+                        if (this.childNodes[first.firstOuterIndex].childNodes[i].nodeName === "BR") {
+                            brTotal += 1;
+                        }
+                    }
+                    let line_height = this.childNodes[first.firstOuterIndex].clientHeight / brTotal * nBR;
+
+                    for (let i = 0; i < first.firstOuterIndex; i++) {
+                        if (this.childNodes[i].nodeName === "HEADER-ELEMENT") {
+                            height += this.childNodes[i].clientHeight;
+                        }
+                    }
+                    //console.log(line_height, height, window.screenTop);
+                    height = height + (line_height);
+                    //console.log(height);
+                    /* let scrollPosition = this.firstElementChild.clientHeight * lines - 40; */
+                    //console.log("this.childNodes[firstOuterIndex].getBoundingClientRect().Y < 120", this.childNodes[first.firstOuterIndex].getBoundingClientRect(), this.childNodes[first.firstOuterIndex].getBoundingClientRect().Y < 120)
+                    //console.log("proposed cursor position:", this.childNodes[first.firstOuterIndex].getBoundingClientRect().top + line_height)
+                    let cursorPosition = this.childNodes[first.firstOuterIndex].getBoundingClientRect().top + line_height;
+
+                    if (cursorPosition < 80) {
+                        //console.log("scroll!!!!!")
+                        window.scroll(0, height - 40);
+                    }
+
+                    /* console.log(this.childNodes, first.firstOuterIndex, this.firstElementChild.clientHeight);
+                    console.log("up scroll", this.firstElementChild.clientHeight, this.childNodes[first.firstOuterIndex].getBoundingClientRect(), height); */
+                }
+
+            }
+            if (Editor.selectedAll) {
+
+                if (event.key == "ArrowRight" || event.key == "ArrowDown") {
+                    console.log("prevent");
+                    event.preventDefault();
+
+                    let sel = getSelection();
+                    let range = sel.getRangeAt(0);
+                    range.setStart(this.lastElementChild.lastChild, 0);
+                    range.setEnd(this.lastElementChild.lastChild, 0);
+
+                }
+                else if (event.key == "ArrowUp" || event.key == "ArrowLeft") {
+                    console.log("prevent");
+                    event.preventDefault();
+
+                    let sel = getSelection();
+                    let range = sel.getRangeAt(0);
+                    range.setStart(this.firstElementChild.firstChild, 0);
+                    range.setEnd(this.firstElementChild.firstChild, 0);
+
+                }
+
+            }
+            if (Editor.keyHistory["Shift"] === "Down") {
+            }
         }
-        //console.log("outside direction key pressed !", Editor.keyHistory["Shift"]);
 
         if (event.key == "Z" || event.key == "z") {
 
@@ -981,65 +923,151 @@ class Editor extends HTMLElement {
             let range = sel.getRangeAt(0);
         }
 
-
         //upset selectedAll if a function key is pressed. IMPORTANT!
-        if (event.key != "Shift" && event.key != "Control" && event.key != "CapsLock") {
-            Editor.selectedAll = false;
-        }
-
-        //setTimeout(this.fireFoxGridCheck, 1, this);
-
-
-        //needs a function for this whole code snipet (trim empty blocks in editor)
-        {
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //needs a function for this whole code snipet (trim empty blocks in editor)  /////////////////////////////////////
+        //This function is meant to fix firefox browser compatibility issues.   /////////////////////////////////////
+        //Should be excluded in microsoft edge and google chrome               /////////////////////////////////////
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        if (Editor.browser.includes('firefox')) {
             //need a function for this session (get last cursor information)
 
-            let cursor = this.getCursorInfor();
-            let f = this.determineAnchorFocusSequence(cursor);
-            let lastCursorNode = cursor.cFN;
-            let nodeIndex = cursor.oIF >= 0 ? cursor.aIF : cursor.oF;
-            let textIndex = cursor.oIF >= 0 ? cursor.oF : -1;
-            //console.log("cursor:", cursor);
-            if (!f) {
-                lastCursorNode = cursor.cAN;
-                nodeIndex = cursor.oIA >= 0 ? cursor.aIA : cursor.oA;
-                textIndex = cursor.oIA >= 0 ? cursor.oA : -1;
-            }
+            let cursor = getCursorInforF(this, Editor);
 
-            if ((textIndex >= 0 && textIndex == lastCursorNode.childNodes[nodeIndex].textContent.length
-                && nodeIndex == lastCursorNode.childNodes.length - 2
-                || textIndex < 0 && nodeIndex == lastCursorNode.childNodes.length - 1)
-                && cursor.cAN !== cursor.cFN
+            let { first, last } = extractCursorObjF(cursor);
+            /* console.log("debug:", first, last, last.lastParaDiv, last.lastNodeOffset) */
+            //console.log("last cursor:", textIndex, nodeIndex, lastCursorNode.childNodes, textIndex < 0 && nodeIndex == lastCursorNode.childNodes.length - 1);
+            ///////////////////////////////////////////////////////////
+            ///////////////////////////////////////////////////////////
+            // FIRST DIV SELECTION ISSUE FIX PROPOSAL//////////////////
+            ////////////////////////////////////////////////////////////////
+            ///////////////////////////////////////////////////////////
+            if (cursor.cAN === cursor.cFN && cursor.cAN === this.firstElementChild
+                && (cursor.aIA !== cursor.aIF || cursor.oA !== cursor.oF) && Editor.cursorStart
+                && !selectAllV && !Editor.selectedAll && !isDirectionKey(event.key)
             ) {
-                console.log('end!', lastCursorNode.children);
-                /* lastCursorNode.innerHTML = "<br>" */
+                let msgRemaining = [];
+                event.preventDefault();
+                if (last.lastTextOffset >= 0 && last.lastNodeOffset < this.firstElementChild.childNode) {
+                    let mesg = (event.key == "Backspace" ? "" : event.key) + this.firstElementChild.childNodes[last.lastNodeOffset].textContent.slice(last.lastTextOffset);
+
+                    if (mesg.length) {
+                        let _ = document.createTextNode(mesg);
+                        msgRemaining.push(_);
+                    }
+
+                } else {
+                    let mesg = event.key == "Backspace" ? "" : event.key;
+
+                    if (mesg.length) {
+                        let _ = document.createTextNode(mesg);
+                        msgRemaining.push(_);
+                    }
+                }
+                for (let i = (last.lastTextOffset >= 0 ? last.lastNodeOffset + 1 : last.lastNodeOffset); i < this.firstElementChild.childNodes.length; i++) {
+                    msgRemaining.push(this.firstElementChild.childNodes[i]);
+                    console.log("in loop:", i);
+                }
+                console.log("message remaining:", msgRemaining, event.key, last.lastTextOffset);
                 if (letterKeyPressed(event.key)) {
+                    while (this.firstElementChild.childNodes.length) {
+                        this.firstElementChild.removeChild(this.firstElementChild.lastChild);
+                    }
+                    for (let c of msgRemaining) {
+                        this.firstElementChild.appendChild(c);
+                    }
+                    let sel = getSelection();
+                    let range = sel.getRangeAt(0);
+                    let offsetV = 1;
+                    let node = this.firstElementChild.childNodes[0];
+                    if (event.key == "Backspace") {
+                        offsetV = 0;
+                        node = this.firstElementChild;
+                    }
+                    range.setStart(node, offsetV);
+                    range.setEnd(node, offsetV);
+                }
+            }
+            ///////////////////////////////////////////////////////////
+            ///////////////////////////////////////////////////////////
+            // MULTIPLE DIVS SELECTED. BEGIN FROM THE VERY FIRST ELEMENT WITH OFFSET 0 AND ENDS WITH 
+            // ANY DIV OTHER THAN THE FIRST ONE AND OFFSET IS THE END OF THE CURRENT DIV CONTAINER.
+            ////////////////////////////////////////////////////////////////
+            ///////////////////////////////////////////////////////////
+
+            else if ((last.lastTextOffset >= 0 && last.lastNodeOffset < last.lastParaDiv.childNodes.length &&
+                last.lastTextOffset == last.lastParaDiv.childNodes[last.lastNodeOffset].textContent.length
+                && last.lastNodeOffset == last.lastParaDiv.childNodes.length - 2
+                || last.lastTextOffset < 0 && last.lastNodeOffset == last.lastParaDiv.childNodes.length - 1)
+                && (cursor.cAN !== cursor.cFN)
+            ) {
+                /*  console.log('end!', last.lastParaDiv.children); */
+
+                if (letterKeyPressed(event.key) && event.key !== "Enter") {
                     console.log("new function test!!", Editor.cursorStart)
                     if (Editor.cursorStart) {
                         console.log("new function test")
                         event.preventDefault();
                         let sel = getSelection();
                         let range = sel.getRangeAt(0);
-                        while (this.firstElementChild.nextElementSibling !== lastCursorNode) {
+                        while (this.firstElementChild.nextElementSibling !== last.lastParaDiv) {
                             this.removeChild(this.firstElementChild.nextElementSibling);
                         }
-                        this.removeChild(lastCursorNode);
-                        this.firstElementChild.innerHTML = event.key + "<br>";
-                        range.setStart(this.firstElementChild, 1);
-                        range.setEnd(this.firstElementChild, 1)
+                        this.removeChild(last.lastParaDiv);
+                        let offSet = 0;
+                        if (event.key !== "Backspace") {
+                            this.firstElementChild.innerHTML = event.key + "<br>"
+                            offSet = 1;
+                        } else {
+                            this.firstElementChild.innerHTML = "<br>";
+                        }
+
+                        range.setStart(this.firstElementChild, offSet);
+                        range.setEnd(this.firstElementChild, offSet);
                     } else {
-                        this.removeChild(lastCursorNode);
+                        console.log("in here!!!!!!")
+                        event.preventDefault();
+                        while (first.firstParaDiv.nextElementSibling !== last.lastParaDiv) {
+                            this.removeChild(first.firstParaDiv.nextElementSibling);
+                        }
+                        this.removeChild(last.lastParaDiv);
+                        let { leftMsg, rightMsg } = this.getMesg(first, last, event.key);
+
+                        let brEle = document.createElement("br");
+
+                        while (first.firstParaDiv.childNodes.length) {
+                            first.firstParaDiv.removeChild(first.firstParaDiv.lastChild);
+                        }
+                        for (let c of leftMsg) {
+                            first.firstParaDiv.appendChild(c);
+                        }
+
+                        first.firstParaDiv.appendChild(brEle);
+                        let sel = getSelection();
+                        let range = sel.getRangeAt(0);
+                        range.setStart(brEle, 0);
+                        range.setEnd(brEle, 0);
                     }
                 }
 
             }
-            if (letterKeyPressed(event.key)) {
-                Editor.cursorStart = false;
-            }
-            if (isDirectionKey(event.key) && Editor.keyHistory["Shift"] !== "Down") {
-                //console.log("direction key pressed", Editor.keyHistory["Shift"]);
-                Editor.cursorStart = false;
-            }
+
+        }
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        if (letterKeyPressed(event.key)) {
+            Editor.cursorStart = false;
+        }
+        if (isDirectionKey(event.key) && Editor.keyHistory["Shift"] !== "Down") {
+            //console.log("direction key pressed", Editor.keyHistory["Shift"]);
+            Editor.cursorStart = false;
+        }
+        if (event.key != "Shift" && event.key != "Control" && event.key != "CapsLock") {
+            Editor.selectedAll = false;
         }
     }
 }
@@ -1047,21 +1075,30 @@ class Editor extends HTMLElement {
 class header3 extends HTMLElement {
     constructor() {
         super();
-
+        this.doubleClicked = false;
     }
     connectedCallback() {
-        //console.log("header3");
-        /* this.addEventListener("keydown", (event) => {
-            console.log("header:", event.key);
-        })
+
         this.addEventListener("click", (event) => {
-            console.log("header:", event);
-        }) */
-        this.addEventListener("keypress", (event) => {
-            console.log("header:", event);
+            console.log("clicked")
+            for (let c of this.parentNode.children) {
+                c.doubleClicked = false;
+            }
+
+        })
+
+        this.addEventListener("dblclick", (event) => {
+
+            let cursor = getCursorInforF(this.parentNode, Editor);
+
+            if (Editor.browser.includes("firefox")) {
+                if (cursorBugF(cursor, "doubleClick", Editor)) {
+                    this.doubleClicked = true;
+
+                }
+            }
         })
     }
-
 }
 class paragraph extends HTMLElement {
     constructor() {
@@ -1073,3 +1110,4 @@ let customElementRegistry = window.customElements;
 customElementRegistry.define("custom-editor", Editor);
 customElementRegistry.define("header-element", header3);
 customElementRegistry.define("paragraph-element", paragraph);
+customElementRegistry.define("custom-nav", navigatorBar);

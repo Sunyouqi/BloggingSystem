@@ -7,9 +7,9 @@ let port = "3000";
 let host = "localhost";
 
 let server = http.createServer((req, res) => {
-    console.log(req.url, " method:", req.method);
+    console.log(req.url, " method:", req.method, req.headers);
     let ext = path.extname(req.url);
-
+    console.log(req.headers.host)
     if (req.url == "/") {
         let filePath = path.join(import.meta.dirname, "index.html");
         //console.log(filePath);
@@ -56,6 +56,63 @@ let server = http.createServer((req, res) => {
         res.write(clientScript);
         res.end();
     }
+    if (req.url == "/local_modules/navigatorBar/nav.js") {
+        let filePath = path.join(import.meta.dirname, "/local_modules/navigatorBar/nav.js");
+
+        let clientScript = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" });
+        res.writeHead(200, {
+            "Content-Type": "application/javascript;charset=utf-8",
+            "X-Content-Type-Options": "nosniff"
+        });
+        res.write(clientScript);
+        res.end();
+    }
+    if (req.url == "/local_modules/buttons/button.js") {
+        let filePath = path.join(import.meta.dirname, "/local_modules/buttons/button.js");
+
+        let clientScript = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" });
+        res.writeHead(200, {
+            "Content-Type": "application/javascript;charset=utf-8",
+            "X-Content-Type-Options": "nosniff"
+        });
+        res.write(clientScript);
+        res.end();
+    }
+    if (req.url == "/local_modules/buttons/buttonStyle.js") {
+        let filePath = path.join(import.meta.dirname, "/local_modules/buttons/buttonStyle.js");
+
+        let clientScript = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" });
+        res.writeHead(200, {
+            "Content-Type": "application/javascript;charset=utf-8",
+            "X-Content-Type-Options": "nosniff"
+        });
+        res.write(clientScript);
+        res.end();
+    }
+    if (req.url == "/local_modules/cursor.js") {
+        let filePath = path.join(import.meta.dirname, "local_modules/cursor.js");
+        console.log("path:", filePath);
+
+        let clientScript = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" });
+        res.writeHead(200, {
+            "Content-Type": "application/javascript;charset=utf-8",
+            "X-Content-Type-Options": "nosniff"
+        });
+        res.write(clientScript);
+        res.end();
+    }
+    if (req.url == "/local_modules/testM.mjs") {
+        let filePath = path.join(import.meta.dirname, "local_modules/testM.mjs");
+        console.log("path:", filePath);
+
+        let clientScript = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" });
+        res.writeHead(200, {
+            "Content-Type": "application/javascript;charset=utf-8",
+            "X-Content-Type-Options": "nosniff"
+        });
+        res.write(clientScript);
+        res.end();
+    }
     if (req.url == "https://code.jquery.com/jquery-3.7.1.slim.js") {
         res.writeHead(200, { "Content-Type": "application/javascript;charset=utf-8", "X-Content-Type-Options": "nosniff" });
         res.end();
@@ -66,8 +123,15 @@ let server = http.createServer((req, res) => {
             console.log((msg.toString()).replace(/\&nbsp\;/g, ' '));
         })
     }
-    if (req.url == "/?anotherDomain") {
-        console.log('received');
+    if (req.headers.host == "localhost:3000") {
+
+        console.log('received', req.url);
+        let s = req.url.split('/');
+        if (s.length < 1 || !s[1].includes("anotherDomain")) {
+            return;
+        }
+        let contentS = s[2].slice(1);
+        console.log(contentS);
         res.writeHead(200, { "Access-Control-Allow-Origin": "*", "Content-Type": "text/plain;charset:utf8" })
         res.write("this is another server");
         res.end();
@@ -85,6 +149,7 @@ let server = http.createServer((req, res) => {
         requestBack.write("Can I get answer?");
         requestBack.end();
     }
+
     /*if (req.url == "/photo.jpg") {
         let pathImg = path.join(import.meta.dirname, "photo.jpg");
         let photoF = fs.readFileSync(pathImg, { flag: "r" });

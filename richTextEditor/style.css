@@ -1,43 +1,35 @@
 body {
-    position: fixed;
-    margin: 0;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 100vw;
-    border: 0 solid transparent;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    z-index: -1;
-
     overflow-x: hidden;
-    overflow-y: hidden;
+    overflow-y: auto;
+    width: 100%;
+    position: absolute;
+    top: 0px;
+    left: 0;
     background-color: rgb(255, 255, 255);
+    margin: 0;
 
 }
 
+
 div.navigator-bar {
     top: 0px;
-    position: sticky !important;
+    position: fixed !important;
+    padding: 0;
     left: 0;
-    opacity: 98.5%;
-    /* align-content: flex-end; */
-    /* justify-content: flex-end; */
+    opacity: 90%;
 
-    border: 1px black solid;
+
+    border: 0px black solid;
 
     background-color: rgb(255, 255, 255);
     height: 50px;
     width: 100%;
-    z-index: 1;
+    z-index: 10;
     user-Select: none;
 
 
     display: inline-grid;
-    grid-template-columns: auto auto auto auto auto auto auto auto auto;
-    grid-template-rows: auto;
+
     gap: 0px;
     align-items: center;
 
@@ -111,28 +103,22 @@ div.publish:hover {
 }
 
 div#richText {
-    position: absolute !important;
-    border: 0px solid rgb(2, 52, 96);
-
-    display: flex;
-    top: 0px;
-    height: 100vh;
-    width: 100vw;
-    margin-top: 0px;
-    margin-bottom: 0px;
-    flex-direction: row;
-    line-height: 1;
-    min-height: 500px;
-    overflow-y: auto;
-    overflow-x: hidden;
+    position: relative;
+    top: 0;
+    z-index: 1;
+    /*  min-height: 200px; */
 }
 
 custom-editor#mainEditor {
     position: relative;
     overflow-y: auto;
     overflow-x: hidden;
-    top: 50px;
-    height: 92%;
+    /* height: 80vh;
+    max-height: 80vh; */
+    top: 0px;
+    padding-top: 80px;
+    padding-bottom: 50px;
+
     width: 100vw;
     background-color: white;
     border: 1px solid transparent;
@@ -143,18 +129,12 @@ custom-editor#mainEditor {
     user-select: none;
 }
 
+
 .separator {
     position: relative;
     display: flex;
 
     justify-content: space-evenly;
-}
-
-.Frame {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    min-height: 100px;
 }
 
 .header {
@@ -172,22 +152,51 @@ custom-editor#mainEditor {
 
 .articleHeader {
     position: relative;
-    width: 80vw;
-    /* min-height: 3rem; */
+    width: 60vw;
 
     line-height: 1.1;
     margin: 0;
     font-weight: normal;
 
     font-size: 2.4rem;
-    border: 1px solid rgba(113, 102, 102, 0.503);
-    /* padding-left: 10px; */
+    border-left: 1px solid rgba(113, 102, 102, 0.503);
+
     padding-top: 15px;
     padding-left: 12px;
-    /* align-items: flex-end;
-    display: flex; */
+    margin-right: 10vw;
+    font-family: medium-content-title-font, Georgia, Cambria, "Times New Roman", Times, serif;
 }
 
+@media screen and (max-width:600px) {
+    custom-editor#mainEditor {
+        padding-top: 160px;
+    }
+
+    .articleHeader {
+        margin-right: 20px;
+
+    }
+}
+
+@media screen and (max-width:420px) {
+    custom-editor#mainEditor {
+        padding-top: 180px;
+    }
+
+    .articleHeader {
+        margin-right: 10px;
+    }
+
+}
+
+/* .block {
+    position: absolute;
+    height: 800px;
+    width: 100vw;
+    top: -70vh;
+    background-color: white;
+    z-index: 100;
+} */
 
 p.articleParagraph {
     position: relative;
@@ -207,15 +216,15 @@ span#initialTitle {
     opacity: 0.5;
     font-size: 1.5rem;
     -webkit-touch-callout: none;
-    /* iOS Safari */
+
     -webkit-user-select: none;
-    /* Safari */
+
     -khtml-user-select: none;
-    /* Konqueror HTML */
+
     -moz-user-select: none;
-    /* Old versions of Firefox */
+
     -ms-user-select: none;
-    /* Internet Explorer/Edge */
+
     user-select: none;
 }
 
@@ -228,7 +237,7 @@ input#postArticle {
 }
 
 [contenteditable] {
-    min-height: 500px;
+
     overflow: auto;
     outline: none;
     word-wrap: break-word;
