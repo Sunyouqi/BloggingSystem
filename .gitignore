@@ -2,6 +2,6 @@
 *.log
 
 #ignore ALL files in ANY directory named img under root directory
-/img/
+/src/img/
 /js/node_modules
 /.vscode/
