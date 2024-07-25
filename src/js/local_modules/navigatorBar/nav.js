@@ -34,12 +34,8 @@ async function navFactory() {
             span.imageSource = imageSourceV;
         } else if (n == 1) {
             span = document.createElement('web-logo');
-            //span.slot = k
-            span.className = "logo"
-            //navB.appendChild(logo);
 
-            //logo.textContent = (slots[n - 1].dataset.content);
-            //span = document.createElement(type);
+            span.className = "logo"
         }
         else {
             span = document.createElement(type);
