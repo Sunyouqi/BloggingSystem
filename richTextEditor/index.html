@@ -16,6 +16,79 @@
 </head>
 
 <body>
+    <template class="logoTemp">
+        <style>
+            div {
+                position: relative;
+                width: 140px;
+                height: 50px;
+
+                background-color: rgb(11, 42, 42);
+            }
+
+            .webTitle {
+                font: bold 40px Courier New, monospace;
+                fill: white;
+
+            }
+
+            /* svg {
+                background-color: black;
+            } */
+        </style>
+        <div>
+            <svg viewBox="0 0 200 100">
+                <g transform="translate(-10, -10)
+                            rotate(90, 52 , 54)" fill="white">
+                    <path fill="white" stroke="black" d="M 47,25
+                         A 8,8 0 0 0 35,25
+                         l -20 20 
+                         A 15,15 0 0 0 37,67
+                         l 25 -25
+                         A 4,4 0 0 0 55,36
+                         l -25 25
+                         A 6,6 0 0 1 21,52 z
+                        " />
+                    <path fill="white" stroke="black" d="M 48,27
+                            A 15,13 0 0 1 71,25
+                            A 5,5 0 0 1 63,33
+                            A 6,6 0 0 0 54,34
+                            l -25 25
+                            A 4,4 0 0 0 22,54 z 
+                            
+                        " />
+                </g>
+                <g transform="translate(-10, -10)
+                                rotate(270, 52, 54)
+                                " fill="white">
+                    <path fill="white" stroke="black" d="M 47,25
+                         A 8,8 0 0 0 35,25
+                         l -20 20 
+                         A 15,15 0 0 0 37,67
+                         l 25 -25
+                         A 4,4 0 0 0 55,36
+                         l -25 25
+                         A 6,6 0 0 1 21,52 z
+                        " />
+                    <path fill="white" stroke="black" d="M 48,27
+                            A 15,13 0 0 1 71,25
+                            A 5,5 0 0 1 63,33
+                            A 6,6 0 0 0 54,34
+                            l -25 25
+                            A 4,4 0 0 0 22,54 z 
+                            
+                        " />
+                </g>
+                <g>
+                    <!-- <path fill="red" stroke='white' d="M 51, 53 z
+                        A 1 1 0 0 0 53 55
+                        A 1 1 0 0 0 51 53"></path> -->
+
+                </g>
+                <text x='90' y='60' class="webTitle">BLOG</text>
+            </svg>
+        </div>
+    </template>
     <template class="buttonTemplate">
         <style>
             button {
@@ -57,6 +130,10 @@
                 background-color: rgb(255, 255, 255);
                 padding-left: 10px;
                 padding-right: 10px;
+            }
+
+            .t1 slot:hover {
+                background-color: rgb(11, 42, 42);
             }
 
             slot:hover {
@@ -135,7 +212,7 @@
                 }
 
                 .tagContainer.t1 {
-                    width: 50px;
+                    /* min-width: 50px; */
                     font-size: 0.5rem;
                     margin-left: 5px;
                 }
@@ -207,7 +284,7 @@
         <nav>
             <div class="tagContainer t1">
                 <div>
-                    <slot name="tag1" data-idx=1 data-content=BLOG.COM></slot>
+                    <slot name="tag1" data-idx=1></slot>
                 </div>
 
             </div>

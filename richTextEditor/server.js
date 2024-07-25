@@ -67,6 +67,17 @@ let server = http.createServer((req, res) => {
         res.write(clientScript);
         res.end();
     }
+    if (req.url == "/local_modules/logo/logo.js") {
+        let filePath = path.join(import.meta.dirname, "/local_modules/logo/logo.js");
+
+        let clientScript = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" });
+        res.writeHead(200, {
+            "Content-Type": "application/javascript;charset=utf-8",
+            "X-Content-Type-Options": "nosniff"
+        });
+        res.write(clientScript);
+        res.end();
+    }
     if (req.url == "/local_modules/buttons/button.js") {
         let filePath = path.join(import.meta.dirname, "/local_modules/buttons/button.js");
 

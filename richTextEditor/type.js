@@ -96,8 +96,6 @@
 ////   need to construct method classes for 
 ////   1. clicking(get anchor focus cursor information determine which comes first)
 ////   2. GETCURSORINFO need to be in a separate class
-/* import createCustomButton from './buttons/button.js'
-import buttonList from './buttons/buttonStyle.js' */
 import navigatorBar from '/local_modules/navigatorBar/nav.js'
 
 import {
