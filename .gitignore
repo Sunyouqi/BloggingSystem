@@ -4,3 +4,4 @@
 #ignore ALL files in ANY directory named img under root directory
 /img/
 /js/node_modules
+/.vscode/
