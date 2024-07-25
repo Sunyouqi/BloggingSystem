@@ -96,7 +96,7 @@
 ////   need to construct method classes for 
 ////   1. clicking(get anchor focus cursor information determine which comes first)
 ////   2. GETCURSORINFO need to be in a separate class
-import navigatorBar from '/local_modules/navigatorBar/nav.js'
+import navigatorBar from './local_modules/navigatorBar/nav.js'
 
 import {
     getCursorInforF, cursorBugF, determineAnchorFocusSequenceF,
@@ -1074,6 +1074,11 @@ class header3 extends HTMLElement {
     constructor() {
         super();
         this.doubleClicked = false;
+        this.addEventListener("dragstart", (event) => {
+
+            console.log('drag', event);
+            event.preventDefault();
+        })
     }
     connectedCallback() {
 
@@ -1096,6 +1101,7 @@ class header3 extends HTMLElement {
                 }
             }
         })
+
     }
 }
 class paragraph extends HTMLElement {

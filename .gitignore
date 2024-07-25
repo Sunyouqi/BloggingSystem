@@ -3,3 +3,4 @@
 
 #ignore ALL files in ANY directory named img under root directory
 /img/
+/richTextEditor/node_modules
