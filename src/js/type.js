@@ -770,7 +770,7 @@ class Editor extends HTMLElement {
             let range = sel.getRangeAt(0);
             this.fireFoxBackSpace(event, sel, range);
             //for IE and Chrome:
-            if (!Editor.browser.includes("firefox") && this.children.length == 1 && !(sel.anchorOffset)) {
+            if (!Editor.browser.includes("firefox") && this.children.length == 1 && !(sel.anchorOffset) && !(sel.focusOffset)) {
                 event.preventDefault();
             }
 
