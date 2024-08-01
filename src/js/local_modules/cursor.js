@@ -74,9 +74,20 @@ export function getCursorInforF(editorObj, Editor) {
         offsetAnchor = 0;
     }
     if (Editor.selectedAll) {
+        ancestorAnchorType = "HEADER-ELEMENTS";
+        ancestorFocusType = "HEADER-ELEMENTS";
+        /////
+        outerIndexA = 1;
+        ancestorIndxA = 0;
+        offsetAnchor = 0;
+        curAnchorNode = editorObj.firstElementChild;
+        ////
         outerIndexF = editorObj.children.length;
-        ancestorIndxF = editorObj.lastElementChild.childNodes.length - 1;
-        offsetFocus = 0;
+        ancestorIndxF =
+            editorObj.lastElementChild.childNodes.length > 1 && editorObj.lastElementChild.lastChild.nodeName == "BR" ?
+                editorObj.lastElementChild.childNodes.length - 2 : editorObj.lastElementChild.childNodes.length - 1;
+        offsetFocus = editorObj.lastElementChild.childNodes[ancestorIndxF].nodeName == "BR" ?
+            0 : editorObj.lastElementChild.childNodes[ancestorIndxF].textContent.length;
         curFocusNode = editorObj.lastElementChild;
     }
     return {
@@ -176,7 +187,7 @@ export function alignLastCursorF(lastCursor, editorObj) {
     let childList = editorObj.lastElementChild.childNodes;
     let textIndex = childList.length - 1;
     //console.log("align:", childList, textIndex);
-    while (childList[textIndex].nodeName !== "#text" && textIndex) {
+    while (textIndex && textIndex < childList.length && childList[textIndex].nodeName !== "#text") {
         textIndex--;
     }
     if (childList.length == 1) {
@@ -234,7 +245,7 @@ export function determineSelectedAllF(editorObj, Editor) {
 
 }
 export function cursorBugF(curCursor, debugStr, Editor) {
-    console.log("cursor in another file", debugStr, Editor.selectedAll);
+    //console.log("cursor in another file", debugStr, Editor.selectedAll);
     let nodeOffset = curCursor.oIA < 0 ? curCursor.oA : curCursor.aIA;
     let textOffset = curCursor.oIA < 0 ? -1 : curCursor.oA;
     //console.log("node offset in cursor bug:", "from", debugStr, curCursor.cAN.childNodes, nodeOffset);
@@ -259,4 +270,50 @@ export function cursorBugF(curCursor, debugStr, Editor) {
     }
     //console.log("pass")
     return false;
+}
+export function setCursorInText(cursor, editorObj, Editor) {
+
+    let range = getSelection().getRangeAt(0);
+    var containerA = editorObj;
+    var containerF = editorObj;
+    //console.log(editorObj.children, editorObj.childNodes, "in set cursor");
+    if (cursor.aT == "HEADER-ELEMENT") {
+        containerA = containerA.childNodes[cursor.oIA];
+        if (!containerA) {
+            cursor.oIA = editorObj.childNodes.length - 2;
+            containerA = containerA.childNodes[cursor.oIA];
+            cursor.aIA = containerA.lastElementChild.childNodes.length - 1;
+            cursor.oA = containerA.lastElementChild.lastElementChild.nodeName == "BR" ?
+                0 : containerA.lastElementChild.lastElementChild.textContent.length;
+        }
+
+
+    }
+    if (cursor.fT == "HEADER-ELEMENT") {
+        containerF = cursor.oIF >= containerF.childNodes.length ?
+            containerF.lastElementChild : containerF.childNodes[cursor.oIF];
+        if (!containerF) {
+            cursor.oIF = editorObj.childNodes.length - 2;
+            containerF = containerF.childNodes[cursor.oIF];
+            cursor.aIF = containerF.lastElementChild.childNodes.length - 1;
+            cursor.oF = containerF.lastElementChild.lastElementChild.nodeName == "BR" ?
+                0 : containerF.lastElementChild.lastElementChild.textContent.length;
+        }
+    }
+
+    if (cursor.oIA == 1 && cursor.aIA == 0 && cursor.oA == 0) {
+        Editor.cursorStart = true;
+    } else {
+        Editor.cursorStart = false;
+    }
+    let f = determineAnchorFocusSequenceF(cursor);
+
+    if (f) {
+        range.setStart(containerA.childNodes[cursor.aIA], cursor.oA);
+        range.setEnd(containerF.childNodes[cursor.aIF], cursor.oF);
+    } else {
+        range.setEnd(containerA.childNodes[cursor.aIA], cursor.oA);
+        range.setStart(containerF.childNodes[cursor.aIF], cursor.oF);
+    }
+    return;
 }

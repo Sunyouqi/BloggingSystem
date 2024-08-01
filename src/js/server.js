@@ -11,7 +11,7 @@ let server = http.createServer((req, res) => {
     let ext = path.extname(req.url);
     console.log(req.headers.host)
     if (req.url == "/") {
-        let filePath = path.join(import.meta.dirname, "index.html");
+        let filePath = path.join(import.meta.dirname, "../index.html");
         //console.log(filePath);
         let mainPage = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" });
         res.writeHead(200, {
@@ -23,7 +23,7 @@ let server = http.createServer((req, res) => {
         res.end();
     }
     if (ext == '.css') {
-        let filePath = path.join(import.meta.dirname, "style.css");
+        let filePath = path.join(import.meta.dirname, "../css/style.css");
 
         let styleSheet = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" });
         res.writeHead(200, {
@@ -45,7 +45,7 @@ let server = http.createServer((req, res) => {
         res.write(clientScript);
         res.end();
     }
-    if (req.url == "/type.js") {
+    if (req.url == "/js/type.js") {
         let filePath = path.join(import.meta.dirname, "type.js");
 
         let clientScript = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" });
@@ -56,7 +56,7 @@ let server = http.createServer((req, res) => {
         res.write(clientScript);
         res.end();
     }
-    if (req.url == "/local_modules/navigatorBar/nav.js") {
+    if (req.url == "/js/local_modules/navigatorBar/nav.js") {
         let filePath = path.join(import.meta.dirname, "/local_modules/navigatorBar/nav.js");
 
         let clientScript = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" });
@@ -67,7 +67,7 @@ let server = http.createServer((req, res) => {
         res.write(clientScript);
         res.end();
     }
-    if (req.url == "/local_modules/logo/logo.js") {
+    if (req.url == "/js/local_modules/logo/logo.js") {
         let filePath = path.join(import.meta.dirname, "/local_modules/logo/logo.js");
 
         let clientScript = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" });
@@ -78,7 +78,7 @@ let server = http.createServer((req, res) => {
         res.write(clientScript);
         res.end();
     }
-    if (req.url == "/local_modules/buttons/button.js") {
+    if (req.url == "/js/local_modules/buttons/button.js") {
         let filePath = path.join(import.meta.dirname, "/local_modules/buttons/button.js");
 
         let clientScript = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" });
@@ -89,7 +89,7 @@ let server = http.createServer((req, res) => {
         res.write(clientScript);
         res.end();
     }
-    if (req.url == "/local_modules/buttons/buttonStyle.js") {
+    if (req.url == "/js/local_modules/buttons/buttonStyle.js") {
         let filePath = path.join(import.meta.dirname, "/local_modules/buttons/buttonStyle.js");
 
         let clientScript = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" });
@@ -100,8 +100,8 @@ let server = http.createServer((req, res) => {
         res.write(clientScript);
         res.end();
     }
-    if (req.url == "/local_modules/cursor.js") {
-        let filePath = path.join(import.meta.dirname, "local_modules/cursor.js");
+    if (req.url == "/js/local_modules/cursor.js") {
+        let filePath = path.join(import.meta.dirname, "/local_modules/cursor.js");
         console.log("path:", filePath);
 
         let clientScript = fs.readFileSync(filePath, { encoding: "utf-8", flag: "r" });

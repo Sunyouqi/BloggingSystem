@@ -101,7 +101,7 @@ import navigatorBar from './local_modules/navigatorBar/nav.js'
 import {
     getCursorInforF, cursorBugF, determineAnchorFocusSequenceF,
     setCursorObjF, alignFirstCursorF, alignLastCursorF,
-    extractCursorObjF, determineSelectedAllF
+    extractCursorObjF, determineSelectedAllF, setCursorInText
 } from './local_modules/cursor.js'
 
 
@@ -132,10 +132,11 @@ class Editor extends HTMLElement {
             Editor.redoCursorQueue = [];
             Editor.initialize = 1;
         }
+        this.addEventListener("paste", this.handlePaste.bind(this));
         this.addEventListener("keyup", this.handleKeyUp.bind(this));
         this.addEventListener("keydown", this.handleKeyDown, { capture: true });
         this.addEventListener("click", this.handleClick.bind(this));
-        this.addEventListener("paste", this.handlePaste.bind(this));
+
         this.addEventListener('scroll', this.scrollHandler.bind(this));
         this.focus();
     }
@@ -143,25 +144,327 @@ class Editor extends HTMLElement {
         console.log("scroll event:", event);
     }
     async handlePaste(event) {
-        //event.preventDefault();
-        let clipBoardData = await navigator.clipboard.read();
+        /* if (Editor.browser.includes("firefox"))  */{
+            event.preventDefault();
+            let cursor = getCursorInforF(this, Editor);
+            let { first, last } = extractCursorObjF(cursor);
+            let { leftMsg, rightMsg } = this.getMesg(first, last, null, false);
 
-        for (let d of clipBoardData) {
-            console.log(d, d.types);
-            for (let t of d.types) {
-                let c = await d.getType(t);
-                let typeArr = t.split('/')
-                console.log(c, typeArr[0]);
-                if (typeArr[0] == "text") {
-                    let text = await c.text();
-                    console.log(text.split('\n'));
+            let clipBoardData = await navigator.clipboard.read();
+            let outSourced = false;
+
+            function calculateNodeOffset(copiedData, firstNode, nodeIndex, leftMsg, lastNode) {
+                let nodeCount = 0;
+                let copiedDataSplit = copiedData[copiedData.length - 1].split('<br>');
+                console.log("in node offset:", copiedDataSplit);
+                for (let i = 0; i < copiedDataSplit.length - 1; i++) {
+                    nodeCount = copiedDataSplit[i].length > 0 ? nodeCount + 2 : nodeCount + 1;
                 }
+                console.log(firstNode, nodeIndex, "nodeCount")
+                if (copiedData.length == 1) {
+                    if (nodeCount + 1 < firstNode.childNodes.length
+                        && (leftMsg.length > 0 && leftMsg[leftMsg.length - 1].nodeName == "BR"
+                            || !copiedDataSplit[0].length && leftMsg.length > 0)
+                    ) {
+                        nodeCount += 1;
+                    }
+                    nodeCount = nodeCount >= firstNode.childNodes.length ? firstNode.childNodes.length - 1 : nodeCount;
+                }
+                if (copiedData.length > 1) {
+                    nodeCount = nodeCount >= lastNode.childNodes.length ? lastNode.childNodes.length - 1 : nodeCount;
+                }
+                console.log(nodeCount, "nodeCount", leftMsg.length > 0)
+                return nodeCount;
+            }
+            function cursorPosition(leftMsg, copiedData, firstDiv, lastDiv, editorObj) {
+                console.log("last:", lastDiv);
+                console.log("data:", copiedData);
+                let copiedDataLastEntrySplit = copiedData[copiedData.length - 1].split('<br>');
 
-                if (t == "text/html") {
-                    console.log("html!!!!");
+                let firstOuterIndex = Array.from(editorObj.childNodes).indexOf(firstDiv);
+
+                let lastOuterIndex = Array.from(editorObj.childNodes).indexOf(lastDiv);
+                let firstNodeIndex = !leftMsg.length ? 0 : leftMsg.length - 1;
+                let nodeCount = calculateNodeOffset(copiedData, firstDiv, firstNodeIndex, leftMsg, lastDiv);
+                let lastNodeIndex = copiedData[copiedData.length - 1] == "<br>" ?
+                    0 : nodeCount;
+                let firstTextIndex = (!leftMsg.length || leftMsg[leftMsg.length - 1].nodeName == "BR") ?
+                    0 : leftMsg[leftMsg.length - 1].length;
+                let lastTextIndex = copiedData[copiedData.length - 1] == "<br>" ?
+                    0 : copiedDataLastEntrySplit[copiedDataLastEntrySplit.length - 1].length;
+                if (firstDiv === lastDiv) {
+                    console.log("here!!!");
+                    lastNodeIndex = copiedData[copiedData.length - 1] == "<br>" ?
+                        lastNodeIndex + 1 : firstNodeIndex + nodeCount;
+                    lastTextIndex = lastNodeIndex == firstNodeIndex ?
+                        lastTextIndex + firstTextIndex : lastTextIndex;
+                }
+                let resultCursor = {};
+                setCursorObjF(resultCursor,
+                    "HEADER-ELEMENT",
+                    firstOuterIndex,
+                    firstNodeIndex,
+                    firstTextIndex,
+                    "HEADER-ELEMENT",
+                    lastOuterIndex,
+                    lastNodeIndex,
+                    lastTextIndex,
+                    firstDiv,
+                    lastDiv
+                )
+                console.log('result cursor:', resultCursor);
+                return resultCursor;
+            }
+            function nodeToStr(nodeList) {
+                let str = "";
+                for (let node of nodeList) {
+                    if (node.nodeName == '#text') {
+                        str += node.textContent;
+
+                    } else if (node.nodeName == "BR") {
+                        str += "<br>";
+                    }
+                }
+                return str;
+            }
+            for (let d of clipBoardData) {
+                console.log(d, d.types);
+                for (let t of d.types) {
+                    let c = await d.getType(t);
+                    let typeArr = t.split('/')
+                    console.log(c, typeArr[0]);
+                    if (typeArr[0] == "text") {
+                        let text = await c.text();
+                        let textArr = text.split('\n');
+                        console.log(textArr);
+                        if (t == "text/html") {
+                            console.log(textArr[0]);
+                            console.log("html!!!!");
+
+                            let start = /(<!--StartFragment-->)/;
+                            let end = /(<!--EndFragment-->)/;
+                            let bodyFlag = false;
+                            let contentBody = [];
+                            for (let t of textArr) {
+                                if (start.test(t)) {
+                                    bodyFlag = true;
+                                }
+                                if (bodyFlag) {
+                                    contentBody.push(t);
+                                }
+                                if (end.test(t)) {
+                                    bodyFlag = false;
+                                }
+
+                            }
+                            console.log("content body:", contentBody);
+                            //let body = [];
+                            let str = "";
+                            for (let i = 0; i < contentBody.length; i++) {
+                                let startF = contentBody[i].match(start);
+                                let endF = contentBody[i].match(end);
+
+                                console.log(contentBody[i].match(start));
+                                console.log(contentBody[i].match(end));
+                                if (startF && endF) {
+                                    str += (contentBody[i].substring(startF.index + startF[0].length, endF.index).trim());
+                                } else if (startF) {
+                                    str += contentBody[i].substring(startF.index + startF[0].length).trim();
+                                } else if (endF) {
+                                    str += contentBody[i].substring(0, endF.index).trim();
+                                } else {
+                                    str += contentBody[i].trim();
+                                }
+                            }
+                            console.log('body:', str);
+                            console.log(str.includes('<'), str.includes('\<'))
+                            let headerPattern = /(<header-element id="para" name="initialHeader" class="articleHeader">)/g;
+                            let headerEndPattern = /(<\/header-element>)/g;
+                            let paragraphs = [];
+                            let m;
+                            //console.log(headerPattern.exec(str));
+                            while (m = headerPattern.exec(str)) {
+                                let endHeader = headerEndPattern.exec(str);
+                                console.log(m.index, endHeader.index);
+                                paragraphs.push(str.substring(m.index + m[0].length, endHeader.index));
+                            }
+
+                            if (!paragraphs.length) {
+                                let ar = str.split('<br>');
+                                let flag = true;
+                                console.log(ar);
+                                for (let a of ar) {
+                                    if (a.includes('<') || a.includes('>')) {
+                                        flag = false;
+                                    }
+                                }
+                                if (flag) {
+                                    paragraphs.push(str);
+                                }
+                            }
+                            console.log(paragraphs);
+                            console.log("left", leftMsg, "right:", rightMsg, cursor, first, last);
+
+                            let rightMsgStr = nodeToStr(rightMsg);
+                            let leftMsgStr = nodeToStr(leftMsg);
+
+                            console.log("right:", rightMsgStr, "left:", leftMsgStr);
+                            console.log("result right", paragraphs[paragraphs.length - 1] + rightMsgStr);
+                            console.log("result left", leftMsgStr + paragraphs[0]);
+                            console.log("selectedAll", Editor.selectedAll);
+
+                            //copy data within the text Editor
+                            // bug need fixing: now the code will insert the copied data in fron of the current text
+                            //    content after Alt + A is pressed.
+                            let lastDiv = last.lastParaDiv;
+                            if (paragraphs.length) {
+                                if (first.firstParaDiv === last.lastParaDiv) {
+                                    if (paragraphs.length == 1) {
+                                        first.firstParaDiv.innerHTML = leftMsgStr + paragraphs[0] + rightMsgStr;
+                                        lastDiv = first.firstParaDiv;
+                                    } else {
+                                        first.firstParaDiv.innerHTML = leftMsgStr + paragraphs[0];
+                                        let endNode = document.createElement('header-element');
+                                        endNode.setAttribute("id", "para");
+                                        endNode.setAttribute("name", "initialHeader");
+                                        endNode.setAttribute("class", "articleHeader");
+                                        endNode.innerHTML = paragraphs[paragraphs.length - 1] + rightMsgStr;
+                                        this.insertBefore(endNode, first.firstParaDiv.nextSibling);
+                                        for (let i = paragraphs.length - 2; i > 0; i--) {
+                                            let node = document.createElement('header-element');
+                                            node.setAttribute("id", "para");
+                                            node.setAttribute("name", "initialHeader");
+                                            node.setAttribute("class", "articleHeader");
+                                            node.innerHTML = paragraphs[i];
+                                            this.insertBefore(node, first.firstParaDiv.nextSibling);
+
+                                        }
+                                        console.log("end:", endNode);
+                                        lastDiv = endNode;
+                                        //last.lastParaDiv.innerHTML = paragraphs[paragraphs.length - 1] + rightMsgStr;
+                                    }
+                                } else {
+                                    while (first.firstParaDiv.nextElementSibling !== last.lastParaDiv) {
+                                        this.removeChild(first.firstParaDiv.nextElementSibling);
+                                    }
+                                    if (paragraphs.length == 1) {
+                                        this.removeChild(last.lastParaDiv);
+                                        first.firstParaDiv.innerHTML = leftMsgStr + paragraphs[0] + rightMsgStr;
+                                        lastDiv = first.firstParaDiv;
+                                    } else {
+                                        first.firstParaDiv.innerHTML = leftMsgStr + paragraphs[0];
+
+                                        for (let i = 1; i < paragraphs.length - 1; i++) {
+                                            let node = document.createElement('header-element');
+                                            node.innerHTML = paragraphs[i];
+                                            node.setAttribute("id", "para");
+                                            node.setAttribute("name", "initialHeader");
+                                            node.setAttribute("class", "articleHeader");
+                                            this.insertBefore(node, last.lastParaDiv);
+
+                                        }
+                                        last.lastParaDiv.innerHTML = paragraphs[paragraphs.length - 1] + rightMsgStr;
+                                    }
+                                    console.log("end:", last.lastParaDiv);
+                                    //console.log(first.firstParaDiv.nextElementSibling, first.firstParaDiv.nextSibling);
+
+                                }
+                                let copiedCursor = cursorPosition(leftMsg, paragraphs, first.firstParaDiv, lastDiv, this)
+                                setCursorInText(copiedCursor, this, Editor);
+                            } else {
+                                console.log("need implementation:", textArr);
+                                outSourced = true;
+                            }
+
+                        }
+                        else if (outSourced && t == "text/plain") {
+                            console.log("need implementation: outsourced text", textArr[textArr.length - 1].split('<br>'));
+                            console.log("left:", leftMsg, "right:", rightMsg);
+                            /* if (!rightMsg.length || rightMsg[rightMsg.length - 1].nodeName != "BR") {
+                                rightMsg.push(document.createElement('br'));
+                            } */
+                            let leftStr = nodeToStr(leftMsg);
+                            let rightStr = nodeToStr(rightMsg);
+                            let lastDiv = last.lastParaDiv;
+                            console.log("leftstr:", leftStr, "rightstr:", rightStr);
+                            /* leftStr = leftStr + textArr[0].trim(); */
+                            /*  rightStr = textArr[textArr.length - 1].trim() + rightStr; */
+                            console.log("leftstr:", leftStr, "rightstr:", rightStr);
+                            for (let i = 0; i < textArr.length; i++) {
+                                textArr[i] = escape(textArr[i]);
+                                textArr[i] = textArr[i].trim();
+                            }
+                            /* leftStr = escape(leftStr);
+                            rightStr = escape(rightStr); */
+                            /* console.log("after escape:", textArr); */
+                            function escape(str) {
+                                /* console.log("in escape:", str); */
+                                for (let i = 0; i < str.length; i++) {
+                                    /* console.log("in str", str[i], str[i] == "<");
+                                    console.log("in str", str, i, str[i]); */
+                                    if (str[i] == "<" || str[i] == ">") {
+                                        /* console.log("here!!!!") */
+                                        str = str.slice(0, i) + ((str[i] == '<') ? "&lt" : "&gt") + str.slice(i + 1);
+                                        i += 2;
+                                    }
+
+                                }
+                                return str;
+                            }
+                            if (first.firstParaDiv === last.lastParaDiv) {
+                                if (textArr.length == 1) {
+                                    first.firstParaDiv.innerHTML = leftStr + textArr[0].trim() + rightStr;
+                                    lastDiv = first.firstParaDiv;
+                                } else {
+                                    first.firstParaDiv.innerHTML = leftStr + textArr[0].trim() + "<br>";
+                                    let endNode = document.createElement("header-element");
+                                    endNode.setAttribute("id", "para");
+                                    endNode.setAttribute("name", "initialHeader");
+                                    endNode.setAttribute("class", "articleHeader");
+                                    endNode.innerHTML = textArr[textArr.length - 1].trim() + rightStr;
+                                    this.insertBefore(endNode, first.firstParaDiv.nextSibling);
+                                    for (let i = 1; i < textArr.length - 1; i++) {
+                                        let node = document.createElement("header-element");
+                                        node.setAttribute("id", "para");
+                                        node.setAttribute("name", "initialHeader");
+                                        node.setAttribute("class", "articleHeader");
+                                        node.innerHTML = textArr[i].trim() + "<br>";
+                                        this.insertBefore(node, endNode);
+                                    }
+                                    lastDiv = endNode;
+                                }
+                            } else {
+                                while (first.firstParaDiv.nextElementSibling !== last.lastParaDiv) {
+                                    this.removeChild(first.firstParaDiv.nextElementSibling);
+                                }
+                                if (textArr.length == 1) {
+                                    this.removeChild(last.lastParaDiv);
+                                    first.firstParaDiv.innerHTML = leftStr + textArr[0].trim() + rightStr;
+                                    lastDiv = first.firstParaDiv;
+                                }
+                                else {
+                                    first.firstParaDiv.innerHTML = (leftStr + textArr[0].trim() + "<br>");
+                                    for (let i = 1; i < textArr.length - 1; i++) {
+                                        let node = document.createElement("header-element");
+                                        node.setAttribute("id", "para");
+                                        node.setAttribute("name", "initialHeader");
+                                        node.setAttribute("class", "articleHeader");
+                                        node.innerHTML = textArr[i].trim() + "<br>";
+                                        this.insertBefore(node, last.lastParaDiv);
+                                    }
+                                    last.lastParaDiv.innerHTML = textArr[textArr.length - 1].trim() + rightStr;
+                                }
+                            }
+
+                            let copiedCursor = cursorPosition(leftMsg, textArr, first.firstParaDiv, lastDiv, this)
+                            setCursorInText(copiedCursor, this, Editor);
+                        }
+                    }
+
                 }
             }
         }
+
         /* let texture = await navigator.clipboard.readText();
         console.log("text", texture); */
         return;
@@ -241,14 +544,14 @@ class Editor extends HTMLElement {
                     lastState.lastElementChild
                 );
             }
-            if (cursorObj.oIA === 3 && cursorObj.aIA === 1 && cursorObj.oIF === 3 && cursorObj.aIF === 1
-                && Math.abs(cursorObj.oA - cursorObj.oF) === 1) {
-                setCursorObjF(cursorObj, "HEADER-ELEMENT", cursorObj.oA, 0, 0, "HEADER-ELEMENT", cursorObj.oA,
+            if (cursorBugF(cursorObj, "saveCursor", Editor)) {
+                /* setCursorObjF(cursorObj, "HEADER-ELEMENT", cursorObj.oA, 0, 0, "HEADER-ELEMENT", cursorObj.oA,
                     this.childNodes[cursorObj.oA].childNodes.length - 1,
                     0,
                     this.childNodes[cursorObj.oA],
                     this.childNodes[cursorObj.oA]
-                );
+                ); */
+                return;
             }
         }
 
@@ -280,34 +583,10 @@ class Editor extends HTMLElement {
             return;
         }
 
-        let sel = getSelection();
-        let range = sel.getRangeAt(0);
+
         let cur = cursorQueue[cursorQueue.length - 1];
-        var containerA = this;
-        var containerF = this;
 
-        if (cur.aT == "HEADER-ELEMENT") {
-            containerA = containerA.childNodes[cur.oIA];
-
-        }
-        if (cur.fT == "HEADER-ELEMENT") {
-            containerF = containerF.childNodes[cur.oIF];
-        }
-
-        if (cur.oIA == 1 && cur.aIA == 0 && cur.oA == 0) {
-            Editor.cursorStart = true;
-        } else {
-            Editor.cursorStart = false;
-        }
-        let f = determineAnchorFocusSequenceF(cur);
-
-        if (f) {
-            range.setStart(containerA.childNodes[cur.aIA], cur.oA);
-            range.setEnd(containerF.childNodes[cur.aIF], cur.oF);
-        } else {
-            range.setEnd(containerA.childNodes[cur.aIA], cur.oA);
-            range.setStart(containerF.childNodes[cur.aIF], cur.oF);
-        }
+        setCursorInText(cur, this, Editor);
 
         cursorQueue.pop();
         return;
@@ -435,7 +714,7 @@ class Editor extends HTMLElement {
     //           and you get letters out of border.
     //           
     //
-    getMesg(first, last, keyV) {
+    getMesg(first, last, keyV, shiftRightMsgBR) {
         let lmsg = [];
         let rmsg = [];
 
@@ -466,8 +745,11 @@ class Editor extends HTMLElement {
             rmsg.push(last.lastParaDiv.childNodes[i]);
 
         }
-        if (rmsg.length && rmsg[0].nodeName == "BR") {
+        if (shiftRightMsgBR && rmsg.length > 1 && rmsg[0].nodeName == "BR") {
             rmsg.shift();
+        }
+        if (!rmsg.length || rmsg[rmsg.length - 1].nodeName != "BR") {
+            rmsg.push(document.createElement('br'));
         }
         console.log(lmsg, rmsg)
         return { leftMsg: lmsg, rightMsg: rmsg };
@@ -519,7 +801,7 @@ class Editor extends HTMLElement {
         // get the message on the left and right side of the current cursor.
         // this can be returned as a result of a function
 
-        let { leftMsg, rightMsg } = this.getMesg(first, last, null);
+        let { leftMsg, rightMsg } = this.getMesg(first, last, null, true);
         console.log(leftMsg, rightMsg)
         /* for (let i = 0; i < first.firstNodeOffset; i++) {
             leftMsg.push(first.firstParaDiv.childNodes[i]);
@@ -761,6 +1043,10 @@ class Editor extends HTMLElement {
                 let node = this.cloneNode(true);
                 this.saveState("undo", node);
                 this.saveCursor("undo");
+                /* let cursor = getCursorInforF(this, Editor);
+                let { first, last } = extractCursorObjF(cursor);
+                let { leftMsg, rightMsg } = this.getMesg(first, last, null, false);
+                console.log("left:", leftMsg, "right", rightMsg); */
 
                 return;
             }
@@ -945,10 +1231,9 @@ class Editor extends HTMLElement {
             ///////////////////////////////////////////////////////////
             if (cursor.cAN === cursor.cFN && cursor.cAN === this.firstElementChild
                 && (cursor.aIA !== cursor.aIF || cursor.oA !== cursor.oF) && Editor.cursorStart
-                && !selectAllV && !Editor.selectedAll && !isDirectionKey(event.key)
+                && !selectAllV && !Editor.selectedAll && !isDirectionKey(event.key) && letterKeyPressed(event.key)
             ) {
                 let msgRemaining = [];
-                event.preventDefault();
                 if (last.lastTextOffset >= 0 && last.lastNodeOffset < this.firstElementChild.childNode) {
                     let mesg = (event.key == "Backspace" ? "" : event.key) + this.firstElementChild.childNodes[last.lastNodeOffset].textContent.slice(last.lastTextOffset);
 
@@ -970,7 +1255,8 @@ class Editor extends HTMLElement {
                     console.log("in loop:", i);
                 }
                 console.log("message remaining:", msgRemaining, event.key, last.lastTextOffset);
-                if (letterKeyPressed(event.key)) {
+                {
+                    event.preventDefault();
                     while (this.firstElementChild.childNodes.length) {
                         this.firstElementChild.removeChild(this.firstElementChild.lastChild);
                     }
@@ -1032,7 +1318,7 @@ class Editor extends HTMLElement {
                             this.removeChild(first.firstParaDiv.nextElementSibling);
                         }
                         this.removeChild(last.lastParaDiv);
-                        let { leftMsg, rightMsg } = this.getMesg(first, last, event.key);
+                        let { leftMsg, rightMsg } = this.getMesg(first, last, event.key, true);
 
                         let brEle = document.createElement("br");
 
@@ -1064,8 +1350,11 @@ class Editor extends HTMLElement {
             //console.log("direction key pressed", Editor.keyHistory["Shift"]);
             Editor.cursorStart = false;
         }
-        if (event.key != "Shift" && event.key != "Control" && event.key != "CapsLock") {
+        if (event.key != "Shift" && event.key != "Control" && event.key != "CapsLock" &&
+            Editor.keyHistory["Control"] != "Down"
+        ) {
             Editor.selectedAll = false;
+            console.log("set selectedAll false!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", event.key)
         }
     }
 }
@@ -1079,11 +1368,16 @@ class header3 extends HTMLElement {
             console.log('drag', event);
             event.preventDefault();
         })
+        /*  this.addEventListener("copy", async (event) => {
+ 
+             console.log('copy header!!!', event.clipboardData.setData("text/html", "hi"));
+ 
+         }) */
     }
     connectedCallback() {
 
         this.addEventListener("click", (event) => {
-            console.log("clicked")
+            //console.log("clicked")
             for (let c of this.parentNode.children) {
                 c.doubleClicked = false;
             }

@@ -32,7 +32,7 @@ export default function createCustomButton(imgSource) {
 
         handleClick(event) {
             console.log("in click event", event);
-            window.location.href = "http://127.0.0.1:5500/ShadowRoot/index.html";
+            //window.location.href = "http://127.0.0.1:5500/ShadowRoot/index.html";
         }
         handleButtonUpperSize(event) {
             console.log("here")
@@ -54,6 +54,7 @@ export default function createCustomButton(imgSource) {
                 img.style.height = "15px";
                 img.style.width = "15px";
             }
+
         }
     }
     let customElementRegistry = window.customElements;
